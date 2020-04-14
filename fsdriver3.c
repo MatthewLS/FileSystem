@@ -32,8 +32,8 @@
 
             if (strcmp(command,"Q") || strcmp(command,"q")) {
                 stat = 0;
-            } else if (strcmp(command,"mkdir")){
-                mkdir();
+            } else if (strcmp(commandList[0],"mkdir")){
+                mkdir(commandList[1]);
             }
             //switch/if statements to call subroutines based off that command
 
@@ -48,4 +48,5 @@
 
 void mkdir(char* name){
     Directory dir = malloc(sizeof(Directory));
+
 }
