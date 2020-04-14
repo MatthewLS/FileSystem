@@ -29,6 +29,9 @@
 
             //make a little loop to accept user input
             char* commands = scanf();
+            char* commandList[2];
+            commandList[0] = strtok(commands,' ');
+            commandLIst[1] = strtok(NULL,' ');
 
             if (strcmp(command,"Q") || strcmp(command,"q")) {
                 stat = 0;
