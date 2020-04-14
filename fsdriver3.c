@@ -4,10 +4,8 @@
 
 #include "fsdriver3.h"
 #include "fsLow.h"
+#include "Directory.h"
 
-struct commands {
-
-}
 
     int main(int argc,char *argv) {
 
@@ -30,9 +28,12 @@ struct commands {
             }
 
             //make a little loop to accept user input
-            char* command = scanf();
+            char* commands = scanf();
+
             if (strcmp(command,"Q") || strcmp(command,"q")) {
                 stat = 0;
+            } else if (strcmp(command,"mkdir")){
+                mkdir();
             }
             //switch/if statements to call subroutines based off that command
 
@@ -40,4 +41,11 @@ struct commands {
 
         } while(stat);
     return 0;
+}
+
+
+
+
+void mkdir(char* name){
+    Directory dir = malloc(sizeof(Directory));
 }
