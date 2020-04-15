@@ -127,6 +127,10 @@ int copy(char* sourceFile, char* destination)
 	{	
 		printf("letters:%c ", letter);
 		if(contentCounter >= BUFFSIZE )
+		{
+			printf("need to realloc\n");
+			return 0;
+		}
 		//fputc(letter, destinationFilePtr);	//copies letter into the destination file
 		letter = fgetc(sourceFilePtr);	//gets next letter from source file
 	}
