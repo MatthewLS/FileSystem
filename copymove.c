@@ -1,13 +1,24 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-//#include <unistd.h>
+#include <unistd.h>
 
-#define PATHLEN 5	//subdirectory max
+#define MAXPATHLEN 5	//subdirectory max
 #define PATHMAX 128	//space for path
 #define BUFFSIZE 256	//buffer space
 // UNDONE: function only copies in same directory
 // TODO: copy to different location(aka move)
+
+int copyMove(char*, char*);
+
+int main(int argc, char* argv[])
+{
+	char* sourceFile = argv[1];
+	copyMove(sourceFile, "test2.txt");
+	printf("main\n");
+	//printf("test\n");
+}
+
 
 /*	Function copies contents of a file to a specified destination
 *	arguments: sourceFile(file to be copied) and destinationFile(file contents are copied to
@@ -17,35 +28,48 @@ int copyMove(char* sourceFile, char* destinationFile)
 {
 	FILE* sourceFilePtr,		//pointer for sourcefile
 		* destinationFilePtr;	//pointer for destination file
-	char letter,	//letter to be copied
-		* fileName = calloc(BUFFSIZE, sizeof(char*)),	//holds filename
+	char letter,	//data to be copied
+		* sourceFileName = calloc(BUFFSIZE, sizeof(char*)),	//holds filename
 		* path = calloc(BUFFSIZE, sizeof(char*)),		//holds path
-		* sourceArr = calloc(PATHLEN, sizeof(char*)),			//array to hold path for source file
-		* destinationArr = calloc(PATHLEN, sizeof(char*));	//array to hold path for destination file
+		** sourceArr = malloc((MAXPATHLEN) * sizeof(char)),			//array to hold path for source file
+		** destinationArr = malloc((MAXPATHLEN) * sizeof(char));	//array to hold path for destination file
+	int pathLevel = 0,	//count for pathing purpose
+		sourceArrSize;	//size of source array
 
-
+	//check if space could not be allocated
 	if (sourceArr == NULL)
 		printf("Could not allocate sourceArr\n");
 	if(destinationArr == NULL)
 		printf("could not allocate destinationArr\n");
 
+	//for loop to allocate space per each individual item
+	for(int i = 0; i < MAXPATHLEN; i++)
+	{
+		sourceArr[i] = malloc(BUFFSIZE * sizeof(char));
+		if(sourceArr[i] == NULL)
+			printf("Could not allocate space.\n");
+	}
+
 	//parse path and file name
-	char* token = strtok(sourceFile, "\\/\n"); //starts tokenizing
-	int pathLevel = 0;	//count for pathing purpose
+	char* token = strtok(sourceFile, "/\\\n"); //starts tokenizing
+	
 	while (token != NULL)	//loop to grab rest of the string(path)
 	{
 		printf("%s\n", token);
-		//sourceArr[pathLevel] = token;
 		strcpy(sourceArr[pathLevel], token);
-		token = strtok(NULL, "\\/");
-		if (token != NULL)
+		token = strtok(NULL, "/\\\n");
+		if (token != NULL){
 			pathLevel++;
+			sourceArrSize++;
+		}
 	}
-	strcpy(fileName, sourceArr[pathLevel]);
+	printf("pathlevel:%i\n",pathLevel);
+	strcpy(sourceFileName, sourceArr[pathLevel]);
 
 	if (pathLevel == 0)
 	{
-		sourceFilePtr = fopen(fileName, "r"); //opens the source file
+		printf("in current directory\n");
+		sourceFilePtr = fopen(sourceFileName, "r"); //opens the source file
 		if (sourceFilePtr == NULL)	//if source file couldn't be opened
 		{
 			printf("File \"%s\" not found.\n", sourceFile);	//print statement
@@ -54,12 +78,15 @@ int copyMove(char* sourceFile, char* destinationFile)
 	}
 	else
 	{
+		printf("in directories\n");
+		/*
 		strcpy(path, sourceArr[0]);
 		for (int i = 1; i < pathLevel; i++)
 		{
 
 		}
 		//chdir()
+		*/
 	}
 
 	/*
@@ -73,7 +100,7 @@ int copyMove(char* sourceFile, char* destinationFile)
 	}
 	strcpy(sourceFile, destinationArr[count);
 	*/
-
+/*
 	if (pathLevel == 0)
 	{
 		destinationFilePtr = fopen(destinationFile, "w");	//opens destination file
@@ -87,7 +114,7 @@ int copyMove(char* sourceFile, char* destinationFile)
 	{
 
 	}
-
+	
 	letter = fgetc(sourceFilePtr);	//copies first letter from source file
 	//while loop to copy each letter to the destination file
 	while (letter != EOF)	//while letter is not at the end of the file
@@ -95,11 +122,16 @@ int copyMove(char* sourceFile, char* destinationFile)
 		fputc(letter, destinationFilePtr);	//copies letter into the destination file
 		letter = fgetc(sourceFilePtr);	//gets next letter from source file
 	}
-
-	printf("Contents from \"%s\" copied to \"%s\".\n", sourceFile, destinationFile);	//print statement
+	*/
+	printf("Contents from \"%s\" copied to \"%s\".\n", sourceFileName, destinationFile);	//print statement
+	printf("sourcesize:%i\n", sourceArrSize);
+	for(int i = 0; i <= MAXPATHLEN ; i++)
+	{
+		free(sourceArr[i]);
+	}
 	free(sourceArr);
-	free(destinationArr);
-	fclose(sourceFilePtr);	//close source file
-	fclose(destinationFilePtr);	//close destination file
+//	free(destinationArr);
+//	fclose(sourceFilePtr);	//close source file
+	//fclose(destinationFilePtr);	//close destination file
 	return 1;	//return 1 for a successful copy
 }
