@@ -50,6 +50,8 @@
 
 
 void mkdir(char* name){
-    Directory dir = malloc(sizeof(Directory));
+    directory dir = malloc(sizeof(Directory));
+    dir = {.name = name, };
+
 
 }

@@ -7,9 +7,10 @@
 
 typedef struct directory
 {
-    char name[30];
+    char* name;
     unsigned long long dirSize;
     char dirType[10];
+    //this will be changed to struct that TJ makes
     unsigned char permissions;
 
 
@@ -33,5 +34,5 @@ typedef struct directory
     //holds mem locations
     short bitfield[];
 
-};
+} directory;
 #endif //UNTITLED1_DIRECTORY_H
