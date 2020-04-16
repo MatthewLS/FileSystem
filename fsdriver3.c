@@ -4,14 +4,27 @@
 
 #include "fsdriver3.h"
 #include "fsLow.h"
-#include "Directory.h"
+#include "FileSystem.h"
 
 
-    int main(int argc,char *argv) {
+int main (int argc, char *argv[])
+{
+    char * filename;
+    uint64_t volumeSize;
+    uint64_t blockSize;
+    int retVal;
 
-        loop(argv[1]);
+    if (argc > 3)
+    {
+        filename = argv[1];
+        volumeSize = atoll (argv[2]);
+        blockSize = atoll (argv[3]);
+    }
 
-        return EXIT_SUCCESS;
+    retVal = startPartitionSystem (filename, &volumeSize, &blockSize);
+    printf("Opened %s, Volume Size: %llu;  BlockSize: %llu; Return %d\n", filename, (ull_t)volumeSize, (ull_t)blockSize, retVal);
+
+    return EXIT_SUCCESS;
     }
 
 
