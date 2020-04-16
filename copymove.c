@@ -58,11 +58,11 @@ int copy(char *sourceFile, char *destination)
 
 	while (completed == 1)
 	{
-		if (file == directory)
-		{
+		//if (file == directory)
+		//{
 			//make list of files
 			//open directory then copy files
-		}
+		//}
 		//source file
 		sourceArr = malloc((MAXPATHLEN) * sizeof(char)); //allocate space for source array
 		if (sourceArr == NULL)							 //if space could not be allocated
