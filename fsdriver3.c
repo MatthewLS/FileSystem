@@ -4,28 +4,41 @@
 
 #include "fsdriver3.h"
 #include "fsLow.h"
-#include "Directory.h"
+#include "FileSystem.h"
 
 
-    int main(int argc,char *argv) {
+int main (int argc, char *argv[])
+{
+    //when we run the driver we specify the volume/root directory name, volume size and block size.
+    char * filename;
+    uint64_t volumeSize;
+    uint64_t blockSize;
+    int retVal;
 
-        loop(argv[1]);
+    if (argc > 3)
+    {
+        filename = argv[1];
+        volumeSize = atoll (argv[2]);
+        blockSize = atoll (argv[3]);
+    }
+    //start partition system creates our volume
+    retVal = startPartitionSystem (filename, &volumeSize, &blockSize);
+    printf("Opened %s, Volume Size: %llu;  BlockSize: %llu; Return %d\n", filename, (ull_t)volumeSize, (ull_t)blockSize, retVal);
 
-        return EXIT_SUCCESS;
+    //this is where we will accept user input and call functions
+    loop();
+
+    return EXIT_SUCCESS;
     }
 
 
 
-    void loop(char* prompt){
+    void loop(){
         int stat;
         char *line;
         char *args;
         do {
-            if (prompt != NULL){
-                printf("%s ",prompt);
-            } else {
                 printf("> ");
-            }
 
             //make a little loop to accept user input
             char* commands = scanf();
