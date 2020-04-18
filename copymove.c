@@ -13,8 +13,8 @@
 // TODO: copy to different location(aka move)
 
 int copy(char *, char *, Directory *);
-int move(char *, char *);
-int copymove(char *, char *);
+int move(char *, char *, Directory *);
+int copymove(char *, char *, Directory *);
 
 // int main(int argc, char *argv[])
 // {
@@ -60,8 +60,8 @@ int copy(char *sourceFile, char *destination, Directory *entry)
 		buffCounter = 0,		 //buffer counter
 		completed = 0;			 //process completed
 
-	while (completed == 0)
-	{
+	//while (completed == 0)
+	//{
 		// if (entry->permissions[0] == 1)
 		// {
 		// 	make list of files
@@ -305,13 +305,31 @@ int copy(char *sourceFile, char *destination, Directory *entry)
 			free(destinationPath);
 			//printf("destinationpath freed\n");
 		//}
-		completed = 1;
-	}
+	//	completed = 1;
+	//}
 	return 1; //return 1 for a successful copy
 }
 
-int move(char *source, char *destination)
+int move(char *source, char *destination, Directory* entry)
 {
-	//copy(source, destination);
-	//remove contents
+	//if(directory)
+	//copy directory permissions(name, pointer to files, etc)
+	//make(or add?) dir
+	copy(source, destination, entry);
+	//return 0 if unsuccess
+	//remove dir and function
+	return 1; //if success
+}
+
+int copymove(char * source, char* destination, Directory* entry)
+{
+	int completed = 0;
+	//if directory
+	//list contents
+	while(completed == 0)
+	{
+		copy(source, destination, entry);
+		completed = 1;
+	}
+	return 1;
 }

@@ -71,25 +71,25 @@ void loop()
 
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
-        printf("%s\n", line);
+        //printf("%s\n", line);
         token = strtok(line, " \n");
-        printf("got token\n");
+        //printf("got token\n");
         while(token == NULL)
         {
             printf(">");
             fgets(line, BUFFER_LENGTH, stdin);      //gets line since old one was empty
             token = strtok(line, " \n"); 
         }
-        printf("tokenizing\n");
+        //printf("tokenizing\n");
         while(token != NULL)
         {
             strcpy(command[counter],token);
-            printf("command:%s:%i\n",command[counter], counter);
+            //printf("command:%s:%i\n",command[counter], counter);
             token = strtok(NULL, " \n\t");
             counter++;
         }
-        command[counter] = '\0';
-        printf("checking command\n");
+        //command[counter] = '\0';
+        //printf("checking command\n");
         if (strcmp(command[0], "Q") == 0|| strcmp(command[0], "q") == 0)
         {
             printf("Exiting\n");
@@ -102,11 +102,13 @@ void loop()
         else if (strcmp(command[0], "copy") == 0)
         {
             printf("copy\n");
-            copy(command[1], command[2], entry);
+            //copy(command[1], command[2], entry);
+            copymove(command[1], command[2], entry);
         }
         else if(strcmp(command[0], "move") == 0)
         {
             printf("move\n");
+            //move();
         }
         else
         {
@@ -117,6 +119,7 @@ void loop()
         counter = 0;
     }
     free(command);
+    free(line);
     return;
 }
 
