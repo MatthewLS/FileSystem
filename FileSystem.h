@@ -56,15 +56,15 @@ typedef struct Directory{
         unsigned long fileId;
         unsigned long file;
         unsigned long nextFile;
-    };
+    }Node;
 
     struct fileList{
         struct Node node;
-    };
+    }fileList;
 
     //mem location of directory this Dir is located in. if root, parent is special value
     unsigned long parent;
-};
+}Directory;
 
 /*
  * File is a linked list structure which holds FileExtents, which describe contiguous blocks.
@@ -83,9 +83,9 @@ typedef struct File {
 
         //points to next contiguous block section
         struct FileExtents *nextExtent;
-    };
+    }FileExtents;
 
     struct FileExtents fileExtensions;
     unsigned long sig2;
-};
+}File;
 #endif //UNTITLED1_DIRECTORY_H
