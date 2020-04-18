@@ -15,18 +15,18 @@ int copy(char *, char *);
 int move(char *, char *);
 int copymove(char *, char *);
 
-int main(int argc, char *argv[])
-{
-	char *sourceFile = argv[1],
-		 *destinationFile = argv[2];
-	int result;
-	result = copy(sourceFile, destinationFile);
-	if (result == 1)
-	{
-		printf("Copy Successful.\n");
-	}
-	//printf("back in main\n");
-}
+//int main(int argc, char *argv[])
+//{
+//	char *sourceFile = argv[1],
+//		 *destinationFile = argv[2];
+//	int result;
+//	result = copy(sourceFile, destinationFile);
+//	if (result == 1)
+//	{
+//		printf("Copy Successful.\n");
+//	}
+//	//printf("back in main\n");
+//}
 
 /*	Function copies contents of a file to a specified destination
 *	arguments: sourceFile(file to be copied) and destination(where contents are copied to)

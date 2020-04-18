@@ -19,6 +19,7 @@
 
 void mkdir(char *);
 void loop();
+boolean addFile();
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +54,7 @@ void loop()
     *token, //for tokenizer
     *fsystem, //name of filesystem
     **command; //command & arg list
-    Directory* entry;
+    struct Directory* entry;
 
     while(stat)
     {
@@ -108,6 +109,15 @@ void loop()
         {
             printf("move\n");
         }
+        else if(strcmp(command[0], "touch" == 0))
+        {
+            printf("add\n");
+            addFile(command[1]);
+        }
+        else if(strcmp(command[0], "rm" == 0))
+        {
+            printf("remove\n");
+        }
         else
         {
             printf("Command not found.\n");
@@ -122,5 +132,5 @@ void loop()
 
 
 void mkdir(char* name){
-    Directory* dir = malloc(sizeof(Directory));
+    struct Directory* dir = malloc(sizeof(struct Directory));
 }
