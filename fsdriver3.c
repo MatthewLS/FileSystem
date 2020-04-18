@@ -103,12 +103,12 @@ void loop()
         {
             printf("copy\n");
             //copy(command[1], command[2], entry);
-            copymove(command[1], command[2], entry);
+            copymove(command, entry);
         }
         else if(strcmp(command[0], "move") == 0)
         {
             printf("move\n");
-            //move();
+            copymove(command, entry);
         }
         else
         {
