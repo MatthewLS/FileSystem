@@ -12,6 +12,8 @@
 #include "copymove.c"
 #include "fsLow.h"
 #include "FileSystem.h"
+#include <time.h>
+#include <assert.h>
 
 #define EXIT_SUCCESS 0
 #define MAXCOMMLIST 5
@@ -19,7 +21,7 @@
 
 void mkdir(char *);
 void loop();
-boolean addFile();
+void addFile(char *);
 
 int main(int argc, char *argv[])
 {
@@ -103,18 +105,18 @@ void loop()
         else if (strcmp(command[0], "copy") == 0)
         {
             printf("copy\n");
-            copy(command[1], command[2], entry);
+//            copy(command[1], command[2], entry);
         }
         else if(strcmp(command[0], "move") == 0)
         {
             printf("move\n");
         }
-        else if(strcmp(command[0], "touch" == 0))
+        else if(strcmp(command[0], "touch") == 0)
         {
             printf("add\n");
             addFile(command[1]);
         }
-        else if(strcmp(command[0], "rm" == 0))
+        else if(strcmp(command[0], "rm") == 0)
         {
             printf("remove\n");
         }
@@ -128,6 +130,35 @@ void loop()
     }
     free(command);
     return;
+}
+
+void addFile(char* filename){
+//    strcpy(char* name, const char* filename);
+    printf("yee\n");
+    struct Directory* yee;
+    strcpy(yee->name, filename);
+    printf("%s\n", yee->name);
+
+    time_t t = time(NULL);
+    struct tm *tm = localtime(&t);
+    char s[64];
+    assert(strftime(s, sizeof(s), "%c", tm));
+    yee->dateCreated = s;
+    yee->dateModified = s;
+    printf("%s\n", yee->dateCreated);
+    printf("%s\n", yee->dateModified);
+//    time_t t = time(NULL);
+//    char *ctime(const time_t *timer);
+//    yee->dateCreated = *ctime;
+//    printf("%s\n", yee->dateCreated);
+//    printf("now: %d-%02d-%02d %02d:%02d:%02d\n",
+//            yee->dateCreate.tm_year + 1900,
+//            yee->dateCreate.tm_mon + 1,
+//            yee->dateCreate.tm_mday,
+//            yee->dateCreate.tm_hour,
+//            yee->dateCreate.tm_min,
+//            yee->dateCreate.tm_sec);
+
 }
 
 

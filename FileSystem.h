@@ -7,6 +7,8 @@
 * Description: header for a directory
 * **************************************************************/
 
+#include <time.h>
+
 #ifndef UNTITLED1_DIRECTORY_H
 #define UNTITLED1_DIRECTORY_H
 
@@ -44,7 +46,8 @@ typedef struct Directory{
      * datemod and datecreate are encoded using a long int. meaning a file created on the first on Jan 1st 2020 @ 1:34 will be dateCreate=010120201334
      */
     unsigned long int dateModified;
-    unsigned long int dateCreate;
+    struct tm dateCreate;
+    char* dateCreated;
 
 
     /* Linked list for nugget ptrs
