@@ -21,7 +21,7 @@
 
 void mkdir(char *);
 void loop();
-void addFile(char *);
+void addFile(char *, char*);
 
 int main(int argc, char *argv[])
 {
@@ -57,6 +57,16 @@ void loop()
     *fsystem, //name of filesystem
     **command; //command & arg list
     struct Directory* entry;
+
+    printf("_________         ___.    .__                  __   \n");
+    printf("\\_   ___ \\ _____  \\_ |__  |__|  ____    ____ _/  |_ \n");
+    printf("/    \\  \\/ \\__  \\  | __ \\ |  | /    \\ _/ __ \\\\   __\\\n");
+    printf(" \\     \\____ / __ \\_| \\_\\ \\|  ||   |  \\\\  ___/ |  |  \n");
+    printf(" \\______  /(____  /|___  /|__||___|  / \\___  >|__|  \n");
+    printf("        \\/      \\/     \\/          \\/      \\/       \n");
+
+
+
 
     while(stat)
     {
@@ -98,6 +108,21 @@ void loop()
             printf("Exiting\n");
             stat = 0;
         }
+        else if (strcasecmp(token, "help") == 0)
+        {
+            printf("\n");
+            printf("Q - exit program\n");
+            printf("cd - change directory\n");
+
+            printf("mkdir - make a directory\n");
+            printf("touch - make a file\n");
+            printf("move = move a file\n");
+
+            printf("rm - remove a file/directory\n");
+            printf("copy - copy a file/directory from one path to other\n");
+
+            printf("\n");
+        }
         else if (strcmp(command[0], "mkdir") == 0)
         {
             mkdir(fsystem);
@@ -114,7 +139,20 @@ void loop()
         else if(strcmp(command[0], "touch") == 0)
         {
             printf("add\n");
-            addFile(command[1]);
+            addFile(command[1], command[2]);
+            char *name = strtok(NULL, " ");
+            char *sizec = strtok(NULL, " ");
+            if (name == NULL || sizec == NULL)
+            {
+                printf("format: Name size in LBA\n");
+            }
+            else
+            {
+                uint64_t size = strtoull(sizec, NULL, 0);
+                addFile(name, size);
+            }
+            addFile(command[1], command[2]);
+
         }
         else if(strcmp(command[0], "rm") == 0)
         {
@@ -132,33 +170,25 @@ void loop()
     return;
 }
 
-void addFile(char* filename){
+void addFile(char* filename, char* filelocation){
 //    strcpy(char* name, const char* filename);
-    printf("yee\n");
-    struct Directory* yee;
-    strcpy(yee->name, filename);
-    printf("%s\n", yee->name);
+    struct Directory *addFile = NULL;
+    addFile = malloc(sizeof(addFile));
+    if (strcmp(filelocation, "root") == 0 ){
+        addFile->parent = 1;
+    }
+    strcpy(addFile->name, filename);
+    printf("%s\n", addFile->name);
 
     time_t t = time(NULL);
     struct tm *tm = localtime(&t);
     char s[64];
     assert(strftime(s, sizeof(s), "%c", tm));
-    yee->dateCreated = s;
-    yee->dateModified = s;
-    printf("%s\n", yee->dateCreated);
-    printf("%s\n", yee->dateModified);
-//    time_t t = time(NULL);
-//    char *ctime(const time_t *timer);
-//    yee->dateCreated = *ctime;
-//    printf("%s\n", yee->dateCreated);
-//    printf("now: %d-%02d-%02d %02d:%02d:%02d\n",
-//            yee->dateCreate.tm_year + 1900,
-//            yee->dateCreate.tm_mon + 1,
-//            yee->dateCreate.tm_mday,
-//            yee->dateCreate.tm_hour,
-//            yee->dateCreate.tm_min,
-//            yee->dateCreate.tm_sec);
-
+    addFile->dateCreated = s;
+    addFile->dateModified = s;
+    printf("%s\n", addFile->dateCreated);
+    printf("%s\n", addFile->dateModified);
+    free(addFile);
 }
 
 

@@ -45,7 +45,8 @@ typedef struct Directory{
     /* this is just metadata for the Dir
      * datemod and datecreate are encoded using a long int. meaning a file created on the first on Jan 1st 2020 @ 1:34 will be dateCreate=010120201334
      */
-    unsigned long int dateModified;
+//    unsigned long int dateModified;
+    char* dateModified;
     struct tm dateCreate;
     char* dateCreated;
 
@@ -67,7 +68,7 @@ typedef struct Directory{
 
     //mem location of directory this Dir is located in. if root, parent is special value
     unsigned long parent;
-};
+}Directory;
 
 /*
  * File is a linked list structure which holds FileExtents, which describe contiguous blocks.
