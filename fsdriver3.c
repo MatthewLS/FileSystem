@@ -14,7 +14,6 @@
 #include "FileSystem.h"
 #include <time.h>
 #include <assert.h>
-
 #define EXIT_SUCCESS 0
 #define MAXCOMMLIST 5
 #define BUFFER_LENGTH 256
@@ -22,6 +21,35 @@
 void mkdir(char *);
 void loop();
 void addFile(char *, char*);
+
+typedef struct openFileEntry {
+    int flags;
+    uint64_t size;
+    uint64_t pointer;
+    uint64_t Id;
+    char* filebuffer;
+}openFileEntry, *openFileEntry_ptr;
+
+openFileEntry * openFileList;
+
+//uint64_t writeFile(int fd, char *source, uint64_t length){
+////    fd = destination
+////    source = file we are writing from
+////    fd checks -
+//
+//    uint64_t currentBlock = fd.position / currentBlock-> blocksize;
+//    uint64_t currentOffset = fd.position % currentBlock-> blocksize;
+//
+//    if (length + currentOffset < currentBlock-> blocksize){
+////        Memcopy arguments = source, fd, length, currentOffset
+//    }
+//    else (length + currentOffset > (currentBlock-> blocksize * 2)){
+////        Memcopy arguments = source, fd, length, currentOffset
+////        LBAWrite = fileBuffer, blockStart
+////        Memcopy
+//    }
+//
+//}
 
 int main(int argc, char *argv[])
 {
@@ -46,6 +74,8 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
+
+
 
 void loop()
 {
@@ -85,6 +115,8 @@ void loop()
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
         printf("%s\n", line);
+//        char * tempLine;
+//        strcpy(tempLine, line);
         token = strtok(line, " \n");
         printf("got token\n");
         while(token == NULL)
@@ -101,25 +133,28 @@ void loop()
             token = strtok(NULL, " \n\t");
             counter++;
         }
-        command[counter] = '\0';
+//        command[counter] = '\0';
         printf("checking command\n");
         if (strcmp(command[0], "Q") == 0|| strcmp(command[0], "q") == 0)
         {
             printf("Exiting\n");
             stat = 0;
         }
-        else if (strcasecmp(token, "help") == 0)
+        else if (strcasecmp(command[0], "help") == 0)
         {
             printf("\n");
             printf("Q - exit program\n");
             printf("cd - change directory\n");
 
             printf("mkdir - make a directory\n");
+//          Need to open file for cp, move, read, and write
             printf("touch - make a file\n");
-            printf("move = move a file\n");
+            printf("move - move a file\n");
+            printf("read - reads from a file ");
+            printf("write - writes to a file");
 
             printf("rm - remove a file/directory\n");
-            printf("copy - copy a file/directory from one path to other\n");
+            printf("cp - copy a file/directory from one path to other\n");
 
             printf("\n");
         }
@@ -127,9 +162,9 @@ void loop()
         {
             mkdir(fsystem);
         }
-        else if (strcmp(command[0], "copy") == 0)
+        else if (strcmp(command[0], "cp") == 0)
         {
-            printf("copy\n");
+            printf("copying\n");
 //            copy(command[1], command[2], entry);
         }
         else if(strcmp(command[0], "move") == 0)
@@ -157,6 +192,41 @@ void loop()
         else if(strcmp(command[0], "rm") == 0)
         {
             printf("remove\n");
+        }
+        else if(strcmp(command[0], "read") == 0)
+        {
+            printf("read\n");
+        }
+        else if(strcmp(command[0], "write") == 0)
+        {
+            printf("write\n");
+            char currWD[PATHMAX];
+            char * filename = command[1];
+//      write filename "adsf asdf as asdf"
+            FILE* fd = fopen(filename, "w");
+            getcwd(currWD, sizeof(currWD));
+
+            size_t n = sizeof(command)/sizeof(command[0]);
+            char* source[counter - 2];
+            printf("This is size of counter %d\n", counter);
+
+            for (int i = 2; i < counter; i++){
+                printf("this is command %s\n", command[i]);
+                 strcpy(source[i-2], command[i]);
+                printf("this is source %s\n", source[i-2]);
+            }
+
+//            printf("this is line %s\n", line);
+//
+//            source = strtok(line, "\"");
+//            while (source != NULL){
+//                source = strtok(NULL, "\"");
+//                printf("this is in the source loop %s\n", source);
+//            }
+//            printf("this is source %s\n", source);
+
+//            int fd, char *source, uint64_t length
+//            writeFile(fd, source, length);
         }
         else
         {

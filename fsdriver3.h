@@ -44,7 +44,7 @@ typedef struct Directory{
      * datemod and datecreate are encoded using a long int. meaning a file created on the first on Jan 1st 2020 @ 1:34 will be dateCreate=010120201334
      */
     unsigned long int dateModified;
-    struct tm dateCreate;
+//    struct tm dateCreate;
 
 
     /* Linked list for nugget ptrs
