@@ -12,11 +12,13 @@
 #include "copymove.c"
 #include "fsLow.h"
 #include "FileSystem.h"
+#include "Directory.h"
 #include <time.h>
 #include <assert.h>
 #define EXIT_SUCCESS 0
 #define MAXCOMMLIST 5
 #define BUFFER_LENGTH 256
+#define BLOCKSIZE 512
 
 void mkdir(char *);
 void loop();
@@ -30,26 +32,37 @@ typedef struct openFileEntry {
     char* filebuffer;
 }openFileEntry, *openFileEntry_ptr;
 
+typedef struct dirEntry
+{
+    uint64_t id;
+    char name[128];
+    uint64_t date;
+    uint64_t location;
+    uint64_t sizeInBytes;
+    uint64_t flags;
+} dirEntry, *dirEntry_p;
+
 openFileEntry * openFileList;
 
-uint64_t writeFile(FILE* fd, char *source, uint64_t length){
+uint64_t writeFile(int fd, char *source, uint64_t length){
 //    fd = destination
 //    source = file we are writing from
 //    fd checks -
-    printf("Made it\n");
 
-//    uint64_t currentBlock = openFileList[fd].position / currentBlock->blocksize;
-//    uint64_t currentOffset = fd.position % currentBlock-> blocksize;
-//
-//    if (length + currentOffset < currentBlock-> blocksize){
-//        Memcopy arguments = source, fd, length, currentOffset
-//    }
-//    else (length + currentOffset > (currentBlock-> blocksize * 2)){
+    uint64_t currentBlock = openFileEntry->position / BLOCKSIZE;
+    uint64_t currentOffset = openFileEntry->offset % BLOCKSIZE;
+
+    if (length + currentOffset < BLOCKSIZE){  //can it fit in one block?
+        memcpy(openFileList[fd].filebuffer + currentOffset, src, length);
+    }
+    else if (length + currentOffset < (BLOCKSIZE * 2)){   //does it fit in 2 blocks?
+        memcpy(openFileList[fd].filebuffer + currentOffset, src, length);
+        LBAwrite(openFIleLIst[fd].filebuffer + currentOffset, src, length);
+    } else {  //if it spills over into 3 blocks
 //        Memcopy arguments = source, fd, length, currentOffset
 //        LBAWrite = fileBuffer, blockStart
 //        Memcopy
-//    }
-
+    }
 }
 
 int main(int argc, char *argv[])
