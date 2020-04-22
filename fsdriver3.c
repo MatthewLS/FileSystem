@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include "copymove.c"
 #include "fsLow.h"
+#include "fsLow.c"
 #include "FileSystem.h"
 #include "Directory.h"
 #include <time.h>
@@ -32,16 +33,6 @@ typedef struct openFileEntry {
     char* filebuffer;
 }openFileEntry, *openFileEntry_ptr;
 
-typedef struct dirEntry
-{
-    uint64_t id;
-    char name[128];
-    uint64_t date;
-    uint64_t location;
-    uint64_t sizeInBytes;
-    uint64_t flags;
-} dirEntry, *dirEntry_p;
-
 openFileEntry * openFileList;
 
 uint64_t writeFile(int fd, char *source, uint64_t length){
@@ -52,7 +43,9 @@ uint64_t writeFile(int fd, char *source, uint64_t length){
     uint64_t currentBlock = openFileEntry->position / BLOCKSIZE;
     uint64_t currentOffset = openFileEntry->offset % BLOCKSIZE;
 
+//    memcpy initilizes the buffer
     if (length + currentOffset < BLOCKSIZE){  //can it fit in one block?
+//      memcpy(param1 dest, param2 source, param3 size)
         memcpy(openFileList[fd].filebuffer + currentOffset, src, length);
     }
     else if (length + currentOffset < (BLOCKSIZE * 2)){   //does it fit in 2 blocks?
