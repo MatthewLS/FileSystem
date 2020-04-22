@@ -36,11 +36,11 @@ uint64_t writeFile(FILE* fd, char *source, uint64_t length){
 //    fd = destination
 //    source = file we are writing from
 //    fd checks -
-printf("Made it\n");
+    printf("Made it\n");
 
-    uint64_t currentBlock = openFileList[fd].position / currentBlock->blocksize;
-    uint64_t currentOffset = fd.position % currentBlock-> blocksize;
-
+//    uint64_t currentBlock = openFileList[fd].position / currentBlock->blocksize;
+//    uint64_t currentOffset = fd.position % currentBlock-> blocksize;
+//
 //    if (length + currentOffset < currentBlock-> blocksize){
 //        Memcopy arguments = source, fd, length, currentOffset
 //    }
@@ -208,31 +208,21 @@ void loop()
             getcwd(currWD, sizeof(currWD));
 
             size_t n = sizeof(command)/sizeof(command[0]);
-            char *source = "This is a hard coded string";
-//            char** source = malloc(sizeof(char) * 256);
-//            char str[] = "";
-//            printf("This is size of counter %d\n", counter);
+            char* source = malloc(sizeof(char) * 256);
+            char str[] = "";
+            printf("This is size of counter %d\n", counter);
 
 
-//            for (int i = 2; i < counter; i++){
-//                printf("this is command %s\n", command[i]);
-////                source[i-2] = source[i-2] + command[i];
-////                 strcpy(source[i-2], command[i]);
-//                 strcat(str, command[i]);
-//                printf("%s\n", str);
-//
-//            }
-//            printf("this is source %s\n", source[0]);
-//            printf("this is source %s\n", source[1]);
+            for (int i = 2; i < counter; i++){
+                printf("this is command %s\n", command[i]);
 
-//            printf("this is line %s\n", line);
-//
-//            source = strtok(line, "\"");
-//            while (source != NULL){
-//                source = strtok(NULL, "\"");
-//                printf("this is in the source loop %s\n", source);
-//            }
-//            printf("this is source %s\n", source);
+                 strcat(source, command[i]);
+                 if((i + 1) != counter){
+                     strcat(source, " ");
+                 }
+                 printf("this is the string %s\n", source);
+
+            }
 
             if (fd != NULL){
                 writeFile(fd, source, sizeof(source)/sizeof(char) + 1);
