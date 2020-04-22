@@ -9,8 +9,10 @@
 #define PATHMAX 256		 //space for path
 #define FILENAMESIZE 256 //file name size
 #define BUFFSIZE 256	 //buffer space
-// UNDONE: function only copies in same directory
-// TODO: copy to different location(aka move)
+// UNDONE: 
+// 
+// TODO: copy attributes
+//
 
 int copy(char *, char *, Directory *);
 int move(char *, char *, Directory *);
@@ -310,6 +312,10 @@ int copy(char *sourceFile, char *destination, Directory *entry)
 	return 1; //return 1 for a successful copy
 }
 
+/*	This function moves files and directories
+*	parameters are a source, destination, and entry
+*	returns 0 if fail, 1 if succeed
+*/
 int move(char *source, char *destination, Directory *entry)
 {
 	//if(directory)
@@ -321,24 +327,55 @@ int move(char *source, char *destination, Directory *entry)
 	return 1; //if success
 }
 
+/*	This function is the skeleton for both the copy and move function
+*	parameters line(command and its arguments), entry(struct holding file attrib)
+*	returns 0 if fail and 1 if success
+*/
 int copymove(char **line, Directory *entry)
 {
-	int completed = 0;
-	//if directory
-	//list contents(get count? increment then completed only when all files completed)
+	int completed = 0,	 //value to determine if function is done
+		inDirectory = 0, //keeps track if file is directory
+		counter = 0,	 //main counter for directory
+		tempCounter = 0; //temp counter for directory
+
+	//note*****
+	//approach:?
+	//list contents(get count? increment when completed only when all files completed)
+
 	if (strcmp(line[0], "copy") == 0) //if command is copy
 	{
 		printf("copy fucntion\n");
 		while (completed == 0)
 		{
-			copy(line[1], line[2], entry);
-			//if counter == filecount
-			completed = 1;
+			//if(entry->permissions[0] == 1) //file is a directory
+			//{
+			//get list(number?) of files(for loop to count)
+			//counter == number;
+			//inDirectory = 1;
+			//}
+			copy(line[1], line[2], entry); //copies file
+			if(tempCounter == counter)	//files in directory done
+			{
+				inDirectory = 0;
+			}
+			if (tempCounter == counter && inDirectory == 0)	//all files in 
+				completed = 1;
+			else
+			{
+				completed = 0;
+			}
+			
 		}
 	}
 	else //command is move
 	{
 		printf("move function\n");
+		while (completed == 0)
+		{
+			//similar approach to copy but remove file after
+			move(line[1], line[2], entry);
+			completed = 1;
+		}
 	}
 	return 1;
 }
