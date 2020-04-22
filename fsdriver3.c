@@ -32,24 +32,25 @@ typedef struct openFileEntry {
 
 openFileEntry * openFileList;
 
-//uint64_t writeFile(int fd, char *source, uint64_t length){
-////    fd = destination
-////    source = file we are writing from
-////    fd checks -
-//
-//    uint64_t currentBlock = fd.position / currentBlock-> blocksize;
-//    uint64_t currentOffset = fd.position % currentBlock-> blocksize;
-//
+uint64_t writeFile(FILE* fd, char *source, uint64_t length){
+//    fd = destination
+//    source = file we are writing from
+//    fd checks -
+printf("Made it\n");
+
+    uint64_t currentBlock = openFileList[fd].position / currentBlock->blocksize;
+    uint64_t currentOffset = fd.position % currentBlock-> blocksize;
+
 //    if (length + currentOffset < currentBlock-> blocksize){
-////        Memcopy arguments = source, fd, length, currentOffset
+//        Memcopy arguments = source, fd, length, currentOffset
 //    }
 //    else (length + currentOffset > (currentBlock-> blocksize * 2)){
-////        Memcopy arguments = source, fd, length, currentOffset
-////        LBAWrite = fileBuffer, blockStart
-////        Memcopy
+//        Memcopy arguments = source, fd, length, currentOffset
+//        LBAWrite = fileBuffer, blockStart
+//        Memcopy
 //    }
-//
-//}
+
+}
 
 int main(int argc, char *argv[])
 {
@@ -207,14 +208,22 @@ void loop()
             getcwd(currWD, sizeof(currWD));
 
             size_t n = sizeof(command)/sizeof(command[0]);
-            char* source[counter - 2];
-            printf("This is size of counter %d\n", counter);
+            char *source = "This is a hard coded string";
+//            char** source = malloc(sizeof(char) * 256);
+//            char str[] = "";
+//            printf("This is size of counter %d\n", counter);
 
-            for (int i = 2; i < counter; i++){
-                printf("this is command %s\n", command[i]);
-                 strcpy(source[i-2], command[i]);
-                printf("this is source %s\n", source[i-2]);
-            }
+
+//            for (int i = 2; i < counter; i++){
+//                printf("this is command %s\n", command[i]);
+////                source[i-2] = source[i-2] + command[i];
+////                 strcpy(source[i-2], command[i]);
+//                 strcat(str, command[i]);
+//                printf("%s\n", str);
+//
+//            }
+//            printf("this is source %s\n", source[0]);
+//            printf("this is source %s\n", source[1]);
 
 //            printf("this is line %s\n", line);
 //
@@ -225,8 +234,11 @@ void loop()
 //            }
 //            printf("this is source %s\n", source);
 
-//            int fd, char *source, uint64_t length
-//            writeFile(fd, source, length);
+            if (fd != NULL){
+                writeFile(fd, source, sizeof(source)/sizeof(char) + 1);
+            } else {
+                printf("File could not be opened\n");
+            }
         }
         else
         {
