@@ -55,7 +55,7 @@ void initRoot(uint64_t startLocation, uint64_t blockSize){
     uint64_t actualDirEntries = (blocksNeeded * blockSize) / entrySize;
 
     printf("For %d entries. We need %llu bytes. Each entry is %llu bytes \n",
-            AVGDIRECTORYENTRIES, bytesNeeded, entrySize);
+           AVGDIRECTORYENTRIES, bytesNeeded, entrySize);
     rootDirPtr = malloc(blocksNeeded * blockSize);
 
 
@@ -291,11 +291,11 @@ void loop()
             for (int i = 2; i < counter; i++){
                 printf("this is command %s\n", command[i]);
 
-                 strcat(source, command[i]);
-                 if((i + 1) != counter){
-                     strcat(source, " ");
-                 }
-                 printf("this is the string %s\n", source);
+                strcat(source, command[i]);
+                if((i + 1) != counter){
+                    strcat(source, " ");
+                }
+                printf("this is the string %s\n", source);
 
             }
 
