@@ -21,7 +21,18 @@
 #define DIR_FILE 0x00000001 //last will be 1 if a file and 0 if directory
 #define DIR_UNUSED 0x00000002 //will be 1 if used, 0 if unused
 #define DIR_SPECIAL 0x00000004
+#define FILEIDINCREMENT 17
 
+#define FDOPENINUSE 0x00000001
+#define FDOPENFREE 0x00000002
+#define FDOPENMAX 50
+
+#define FDOPENFORWRITE 0x00000010
+#define FDOPENFORREAD 0x00000020
+
+#define MYSEEK_CUR 1
+#define MYSEEK_POS 2
+#define MYSEEK_END 3
 typedef struct fsStruct {
     int counter;
     int size;
@@ -37,6 +48,33 @@ typedef struct dirEntry {
     uint32_t flags;
     char name[NAME_LENGTH]; //file name limited to 128 char
 } dirEntry, *dirEntryPtr;
+
+typedef struct OpenFileEntry {
+    int flags;  //flags of file
+    uint64_t pointer,   //where you are in file
+    size,   //size of file(in bytes)
+    id; //id of file
+    char *fileBuffer;   //file buffer(contents?)
+} openFileEntry, *openFileEntryPtr;
+
+openFileEntry *openFileList;   //array of currently open files
+
+typedef struct vcbStruct {
+    uint64_t volSize,
+            blockSize,
+            numBlocks,
+            freeBlockLoc,
+            freeBlockBlocks,
+            freeBlockLastAllocBit,
+            freeBlockEndBlocksRemaining,
+            freeBlockTotalFreeBlocks,
+            rootDirStart,
+            nextIdToIssue;
+    char *freeBuff; //only for memory
+
+} vcbStruct, *vcbStructPtr;
+
+vcbStructPtr currVCBPtr;
 
 void fsRead(uint64_t);
 
@@ -54,7 +92,13 @@ int getFreeSpace(uint64_t, int);
 
 void initRootDir(uint64_t, uint64_t);
 
+uint64_t getNewFileID();
 
+int myFSOPEN(char *, int);
+
+int myFSSeek(int, uint64_t, int);
+
+// TODO: adjust start locations
 int main(int argc, char *argv[]) {
     char *fileName;
     uint64_t volumeSize;
@@ -72,7 +116,7 @@ int main(int argc, char *argv[]) {
     //retVal = startPartitionSystem("newfs", &volumeSize, &blockSize);
     retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
     printf("Opened %s, Volume Size: %lu; BlockSize: %lu\n", fileName, volumeSize, blockSize);
-    freeMap(volumeSize,blockSize);
+    freeMap(volumeSize, blockSize);
     initRootDir(6, blockSize);
     loop(blockSize);
     printf("out of loop. About to close partition\n");
@@ -275,7 +319,7 @@ int fsWrite(char *line, uint64_t blockSize) {
 char *initFreeMap(uint64_t volumeSize, uint64_t blockSize, uint64_t startPos) {
     uint64_t blocks = volumeSize / blockSize, //number of blocks
     freeBytesNeeded = (blocks / 8) + 1, //adds 1 in case bits is not even. 8 bits per byte so needs block/8 bytes
-    freeBlocksNeeded; //looks how many blocks needed for freespace
+    freeBlocksNeeded;// = (freeBytesNeeded / blockSize) + 1; //looks how many blocks needed for freespace
 
     if ((freeBytesNeeded % blockSize) == 0) //if bytes needed is even
         freeBytesNeeded = (freeBytesNeeded / blockSize);
@@ -313,12 +357,12 @@ void flipFreeBlockBit(char *freeBuffer, uint64_t start, uint64_t count) {
         bitNum = start % 8;     //gets bit num. mod since you want whats left(in case of remainder)
         flipper = 0x80;     //initialize flipping
 
-        if(bitNum > 0)
+        if (bitNum > 0)
             flipper = flipper >> bitNum; //shifts bit
 
         //printf("changing bit #%lu of the %lu in the free block with flipper %i\n", bitNum, byteStart, flipper);
 
-        p = (unsigned char*) freeBuffer + byteStart;    //gets actual byte?
+        p = (unsigned char *) freeBuffer + byteStart;    //gets actual byte?
         *p = *p ^ flipper;  //exclusive or bits
         ++start;
         --count;
@@ -334,7 +378,6 @@ void flipFreeBlockBit(char *freeBuffer, uint64_t start, uint64_t count) {
  * */
 void freeMap(uint64_t volumeSize, uint64_t blockSize) {
     char *freeBuffer = initFreeMap(volumeSize, blockSize, 1);
-
 }
 
 /*  Function inits root dir
@@ -372,7 +415,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     //needs pointer of root's parent now
     rootDirBuffer[0].id = 1000; //random location
     rootDirBuffer[0].flags = 0; //0 for directory
-    strcpy(rootDirBuffer[0].name, "..");    //roots name
+    strcpy(rootDirBuffer[0].name, "root");    //roots name
     rootDirBuffer[0].date = 1234;   //random date
     rootDirBuffer[0].location = startLoc;   //start location of root
     rootDirBuffer[0].sizeinBytes = actualDirEntries * entrySize; //size in bytes
@@ -390,6 +433,83 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
  *
  *  Returns first start location of avail space
  * */
-int getFreeSpace(uint64_t blocksNeeded, int contig){
+int getFreeSpace(uint64_t blocksNeeded, int contig) {
     return 0;
+}
+
+/*  This function gets a file id of a (processs?) used for directory structure
+ *
+ *  No parameter
+ *
+ *  Returns file id
+ * */
+uint64_t getNewFileID() {
+    uint64_t retVal;
+    retVal = currVCBPtr->nextIdToIssue;
+    currVCBPtr->nextIdToIssue = currVCBPtr->nextIdToIssue + FILEIDINCREMENT;
+    return (retVal);
+}
+
+
+//todo: figure out myfsopen
+
+/*  This function opens a file
+ *
+ *  Parameters: fileName--name of file
+ *  method-- method invoking this?
+ *
+ *  Returns file descriptor
+ * */
+int myFSOpen(char *fileName, int method) {
+    int fd; //file descriptor
+
+    //gets file descriptor, looks for structure thats free
+    for (int i = 0; i < FDOPENMAX; i++) {
+        if (openFileList[i].flags == FDOPENFREE) {
+            fd = i;
+            break;
+        }
+    }
+
+    //find file in directory, null if file does not exist
+//    openFileList[i].flags = FDOPENINUSE | FDOPENFORREAD | FDOPENFORWRITE;
+//    openFileList[i].fileBuff = malloc(currVCBPtr->blockSize * 2);
+//    openFileList[i].pointer = 0;
+//    openFileList[i].size = 0;
+
+    return (fd);
+}
+
+//todo: figure out myfsseek
+
+/*  This function is similar to seek function. moves file pointer position
+ *
+ *  Parameters: fd-- filedescriptor
+ *  position-- position of (?)
+ *  method-- method of (?)
+ *
+ *  Returns files pointer
+ * */
+int myFSSeek(int fd, uint64_t position, int method)
+{
+    if(fd >= FDOPENMAX)
+        return -1;
+    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
+        return -1;
+
+    switch(method)
+    {
+        case MYSEEK_CUR:    //moving position position
+            openFileList[fd].pointer += position;
+            break;
+        case MYSEEK_POS:    //current position
+            openFileList[fd].pointer = position;
+            break;
+        case MYSEEK_END:    //end position?
+            openFileList[fd].pointer = openFileList[fd].size + position;
+            break;
+        default:
+            break;
+    }
+    return(openFileList[fd].pointer);
 }
