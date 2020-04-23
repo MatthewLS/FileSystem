@@ -9,7 +9,7 @@
 #define FILENAMESIZE 256 //file name size
 #define BUFFSIZE 256	 //buffer space
 // UNDONE: function only copies in same directory
-// TODO: copy to different location(aka move)
+// todoo: copy to different location(aka move)
 
 int copy(char *, char *);
 int move(char *, char *);

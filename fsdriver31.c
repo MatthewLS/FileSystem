@@ -15,6 +15,8 @@
 #define MAXCOMMLIST 5
 #define BUFFER_LENGTH 256
 #define NAME_LENGTH 128
+#define CONTIGUOUS 1
+#define NOTCONTIGUOUS 0
 #define BLOCKSIZE 512
 #define DIR_FILE 0x00000001 //last will be 1 if a file and 0 if directory
 #define DIR_UNUSED 0x00000002 //will be 1 if used, 0 if unused
@@ -47,6 +49,8 @@ char *initFreeMap(uint64_t, uint64_t, uint64_t);
 void flipFreeBlockBit();
 
 void freeMap(uint64_t, uint64_t);
+
+int getFreeSpace(uint64_t, int);
 
 void initRootDir(uint64_t, uint64_t);
 
@@ -285,7 +289,7 @@ char *initFreeMap(uint64_t volumeSize, uint64_t blockSize, uint64_t startPos) {
     flipFreeBlockBit(freeBuffer, 0, 1); //clears out VCB
     flipFreeBlockBit(freeBuffer, startPos, freeBlocksNeeded); //clear freemap block
 
-    LBAwrite(freeBuffer, freeBlocksNeeded, startPos);
+    LBAwrite(freeBuffer, freeBlocksNeeded, startPos);   //writes buffer to fs
     return (freeBuffer);
 }
 
@@ -350,6 +354,9 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     printf("For %d entries we need %lui bytes\n", AVGDIRECTORYENTRIES, bytesNeeded);
     printf("Actual dir entries = %lui\n", actualDirEntries);
 
+    //need to know if fs has space?
+    startLoc = getFreeSpace(actualDirEntries, CONTIGUOUS);
+
     rootDirBuffer = malloc(blocksNeeded * blockSize); //init size of root dir buffer
 
     //loop to initialize actual dir entries
@@ -372,4 +379,17 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
 
     //write buffer to disk
     LBAwrite(rootDirBuffer, blocksNeeded, startLoc);
+}
+
+// TODO: getfreespace function
+
+/*  This function ?returns? free space
+ *
+ *  Parameters: blocksNeeded-- blocksNeeded
+ *  contig-- is the space contiguous
+ *
+ *  Returns first start location of avail space
+ * */
+int getFreeSpace(uint64_t blocksNeeded, int contig){
+    return 0;
 }
