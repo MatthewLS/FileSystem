@@ -1,7 +1,8 @@
 
-
+// Can be a directory or a file.
 typedef struct dirEntry
 {
+//  id is dirEntry's position
     uint64_t id;
     char name[128];
     uint64_t date;

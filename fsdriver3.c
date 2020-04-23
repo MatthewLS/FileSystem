@@ -31,6 +31,8 @@
 void loop();
 void addFile(char *, char*);
 void initRoot(uint64_t, uint64_t);
+openFileEntry getFile(int);
+int getFileId();
 
 typedef struct openFileEntry {
     int flags;
@@ -76,6 +78,7 @@ void initRoot(uint64_t startLocation, uint64_t blockSize){
 
 }
 
+
 uint64_t writeFile(int fd, char *source, uint64_t length){
 //    fd = destination
 //    source = file we are writing from
@@ -87,19 +90,29 @@ uint64_t writeFile(int fd, char *source, uint64_t length){
 //    memcpy initilizes the buffer
     if (length + currentOffset < BLOCKSIZE){  //can it fit in one block?
 //      memcpy(param1 dest, param2 source, param3 size)
-        memcpy(openFileList[fd].filebuffer + currentOffset, src, length);
+        memcpy(openFileList[fd].filebuffer + currentOffset, source, length);
     }
     else if (length + currentOffset < (BLOCKSIZE * 2)){   //does it fit in 2 blocks?
-        memcpy(openFileList[fd].filebuffer + currentOffset, src, length);
+        memcpy(openFileList[fd].filebuffer + currentOffset, source, length);
 
 //      Check to see if Write or read is beyond the capacity of the volume
 //      uint64_t LBAwrite (void * buffer, uint64_t lbaCount, uint64_t lbaPosition)(
-        LBAwrite(openFileList[fd].filebuffer + currentOffset, src, length);
+        LBAwrite(openFileList[fd].filebuffer + currentOffset, source, length);
     } else {  //if it spills over into 3 blocks
 //        Memcopy arguments = source, fd, length, currentOffset
 //        LBAWrite = fileBuffer, blockStart
 //        Memcopy
     }
+}
+
+openFileEntry getFile(int fd){
+//    NTK what file we are reading from. Need to go through all structs(files)
+//    in order to find the file that we are reading from
+//    uint64_t currentBlock = openFileList[fd].position / BLOCKSIZE;
+//    uint64_t currentOffset = openFileList[fd].offset % BLOCKSIZE;
+//
+//    char *readContent;
+    return openFileList[fd];
 }
 
 int main(int argc, char *argv[])
@@ -251,6 +264,13 @@ void loop()
         else if(strcmp(command[0], "read") == 0)
         {
             printf("read\n");
+            char currWD[PATHMAX];
+            char * filename = command[1];
+            int fd;
+            fd = open(filename, "w");
+            getcwd(currWD, sizeof(currWD));
+
+
         }
         else if(strcmp(command[0], "write") == 0)
         {
