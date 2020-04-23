@@ -19,15 +19,18 @@
 #define DIR_UNUSED 0x00000002
 #define DIR_SPECIAL 0x00000004
 
-typedef struct fileStruct {
+typedef struct fsStruct {
     int counter;
     int size;
-    char *name;
-} fileStruct, *fileStructPtr;
+    char spacer[256 - (sizeof(int) * 2) ],
+    name[];
+} fsStruct, *fsStructPtr;
 
 void fsRead();
-void fsWrite();
-void loop();
+
+int fsWrite(char *, uint64_t);
+
+void loop(uint64_t);
 
 int main(int argc, char *argv[]) {
     char *fileName;
@@ -42,12 +45,16 @@ int main(int argc, char *argv[]) {
     }
     retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
 
-    loop();
+    loop(blockSize);
+    printf("out of loop. About to close partition\n");
+    closePartitionSystem();
+    printf("partition closed");
     return EXIT_SUCCESS;
 }
 
-void loop() {
+void loop(uint64_t blockSize) {
     int stat = 1,   //status?
+        retVal,     //return value
     counter = 0;     //counter
     char *line = malloc(BUFFER_LENGTH * sizeof(char)), //for holding line
     *args,  //?
@@ -78,9 +85,9 @@ void loop() {
 
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
-        printf("%s\n", line);
-//        char * tempLine;
-//        strcpy(tempLine, line);
+        printf("line: %s\n", line);
+        char *tempLine = malloc(BUFFER_LENGTH * sizeof(char));
+        strcpy(tempLine, line);
         token = strtok(line, " \n");
         printf("got token\n");
         while (token == NULL) {
@@ -143,38 +150,11 @@ void loop() {
             printf("remove\n");
         } else if (strcmp(command[0], "read") == 0) {
             printf("read\n");
-//            char currWD[PATHMAX];
-//            char * filename = command[1];
-//            FILE* fd;
-//            fd = fopen(filename, "w");
-//            getcwd(currWD, sizeof(currWD));
-
+            fsRead(blockSize);
 
         } else if (strcmp(command[0], "write") == 0) {
             printf("write\n");
-//            char currWD[PATHMAX];
-//            char * filename = command[1];
-////      write filename "adsf asdf as asdf"
-//            FILE* fd;
-//            fd = fopen(filename, "w");
-//            getcwd(currWD, sizeof(currWD));
-//
-//            size_t n = sizeof(command)/sizeof(command[0]);
-//            char* source = malloc(sizeof(char) * 256);
-//            char str[] = "";
-//            printf("This is size of counter %d\n", counter);
-//
-//
-//            for (int i = 2; i < counter; i++){
-//                printf("this is command %s\n", command[i]);
-//
-//                strcat(source, command[i]);
-//                if((i + 1) != counter){
-//                    strcat(source, " ");
-//                }
-//                printf("this is the string %s\n", source);
-
-//        }
+            fsWrite(tempLine, blockSize);
 
             //      if (fd == NULL) {
             //        printf("File could not be opened\n");
@@ -184,19 +164,59 @@ void loop() {
         } else {
             printf("Command not found.\n");
         }
+        counter = 0;
     }
     //switch/if statements to call subroutines based off that command
-    counter = 0;
+
     free(command);
+    free(line);
     return;
 }
 
-void fsRead()
+void fsRead(uint64_t blockSize)
 {
+    fsStructPtr pBuf = malloc (blockSize * 2);
+    int retVal = LBAread(pBuf, 2, 12);
+    printf("text:%s\n", pBuf->name);
+    free(pBuf);
 
 }
 
-void fsWrite()
-{
+int fsWrite(char *line, uint64_t blockSize) {
+    fsStructPtr pBuf = malloc(blockSize * 2);
+    char *textToWrite,  //text that is going to be written
+            *token, //for tokenizer
+            *copiedText = malloc(BUFFSIZE * sizeof(char));  //temporary copied text
+    int retVal; //return value
 
+    printf("in write function \n");
+    printf("line:%s\n", line);
+    token = strtok(line, "\""); //tokenizer
+    printf("got token\n");
+    while (token == NULL) { //empty case
+        printf(">");
+        fgets(line, BUFFER_LENGTH, stdin);      //gets line since old one was empty
+        token = strtok(line, " \n");
+    }
+    printf("tokenizing\n");
+    while (token != NULL) {
+        //printf("token:%s\n", token);
+        strcpy(copiedText, token);
+        token = strtok(NULL, "\"\n");
+    }
+    printf("Text that will be written is:%s\n", copiedText);
+    pBuf->counter = 103958; //counter?
+    pBuf->size = 85775875;  //size?
+//    textToWrite = (char *) pBuf;    //?
+//    textToWrite = textToWrite + 256;    //allocate space?
+    printf("before copy to text\n");
+    //strcpy(textToWrite, copiedText);    //copies string of text
+    printf("after copy to text\n");
+    //printf("the text is:%s\n",textToWrite);
+    strcpy(pBuf->name, copiedText); //copies text to buffer
+    //pBuf->name = textToWrite;   //
+    retVal = LBAwrite(pBuf, 2, 12);
+
+    free(copiedText);
+    return retVal;
 }

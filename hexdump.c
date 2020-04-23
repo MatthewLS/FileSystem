@@ -297,7 +297,7 @@ int processArguments (int argc, char * argv[])
 
 //Main calls process arguments which in turn calls process file.
 
-//int main (int argc, char * argv[])
-//	{
-//	return (processArguments (argc, argv));
-//	}
+int main (int argc, char * argv[])
+	{
+	return (processArguments (argc, argv));
+	}
