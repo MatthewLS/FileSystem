@@ -53,7 +53,8 @@ typedef struct OpenFileEntry {
     int flags;  //flags of file
     uint64_t pointer,   //where you are in file
     size,   //size of file(in bytes)
-    id; //id of file
+    id, //id of file
+    blockStart; //start block
     char *fileBuffer;   //file buffer(contents?)
 } openFileEntry, *openFileEntryPtr;
 
@@ -78,7 +79,7 @@ vcbStructPtr currVCBPtr;
 
 void fsRead(uint64_t);
 
-int fsWrite(char *, uint64_t);
+int fsWrite2(char *, uint64_t);
 
 void loop(uint64_t);
 
@@ -97,6 +98,9 @@ uint64_t getNewFileID();
 int myFSOPEN(char *, int);
 
 int myFSSeek(int, uint64_t, int);
+
+uint64_t fsWrite(int, char*, uint64_t);
+
 
 // TODO: adjust start locations
 int main(int argc, char *argv[]) {
@@ -227,7 +231,7 @@ void loop(uint64_t blockSize) {
 
         } else if (strcmp(command[0], "write") == 0) {
             printf("write\n");
-            fsWrite(tempLine, blockSize);
+            fsWrite2(tempLine, blockSize);
 
             //      if (fd == NULL) {
             //        printf("File could not be opened\n");
@@ -262,14 +266,14 @@ void fsRead(uint64_t blockSize) {
 }
 
 
-/*  Function writes content to disk
+/*  Function writes content to disk //test function
  *
  *  Parameter: line-- content to be written
  *  blocksize -- blocksize
  *
  *  Returns if success or not?
  * */
-int fsWrite(char *line, uint64_t blockSize) {
+int fsWrite2(char *line, uint64_t blockSize) {
     fsStructPtr pBuf = malloc(blockSize * 2);
     char *textToWrite,  //text that is going to be written
     *token, //for tokenizer
@@ -387,6 +391,7 @@ void freeMap(uint64_t volumeSize, uint64_t blockSize) {
  *
  *  no return
  */
+
 void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     dirEntryPtr rootDirBuffer;  //pointer to directory entry
     uint64_t entrySize = sizeof(dirEntry), //size of entry itself
@@ -513,3 +518,73 @@ int myFSSeek(int fd, uint64_t position, int method)
     }
     return(openFileList[fd].pointer);
 }
+
+
+/*  This function writes content to the filesystem
+ *
+ *  Parameters: fd-- file descriptor
+ *  source-- content being input
+ *  length-- size of content?
+ *
+ *  Returns
+ * */
+uint64_t fsWrite(int fd, char* source, uint64_t length)
+{
+    //checks if fd is in use
+    if(fd >= FDOPENMAX)
+        return -1;
+    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
+        return -1;
+
+    uint64_t currBlock = openFileList[fd].pointer / currVCBPtr->blockSize,  //block num
+        currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;  //remainder(where you are in the current block)
+
+    if(length + currOffset < currVCBPtr->blockSize) //content fits into block
+    {
+        memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
+    }
+    else if(length + currOffset > (currVCBPtr->blockSize * 2)) //content doesn't fit in space
+    {
+        memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
+
+        //writeblock = translateFileBlock(fd, currBlock); //translates file(if contiguous)
+        //todo: lbawrite.
+        // figure out filebuffer var.
+        // openfilelist.filebuff?
+        LBAwrite(openFileList[fd].fileBuffer, 2, currBlock + openFileList[fd].blockStart);
+        memcpy(openFileList[fd].fileBuffer, openFileList[fd].fileBuffer + currVCBPtr->blockSize, currVCBPtr->blockSize); // copies content into buffer
+    }
+    else
+    {
+
+    }
+    openFileList[fd].pointer = openFileList->pointer + length; //new file position
+    currBlock = openFileList[fd].pointer / currVCBPtr->blockSize;
+    currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
+
+    //if file closed write buffer
+}
+
+// todo: notes on commands.
+//  ls- display info in curr dir(iterate through names?
+//  cd - sets internal global
+//  pwd - display internal global
+//  cp source dest -
+//      1. fsopen(src)
+//      2. fsopen(dest)
+//      3. fsread(source)
+//      4. fswrite(dest)
+//  cptoLinux source dest -
+//      1. fsopen(src)
+//      2. open(dest)
+//      3. fsread(src)
+//      4. write(dest)
+//      5. fsclose(src)
+//      6. close(dest)
+//  cpfromLinux source dest -
+//      1. open(src)
+//      2. fsopen(dest)
+//      3. read(src)
+//      4. fswrite(dest)
+//      5. fscloes(dest)
+//      6. close(src)
