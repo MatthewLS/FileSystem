@@ -42,9 +42,9 @@ typedef struct fsStruct {
 
 typedef struct dirEntry {
     uint64_t id,    //id for ...
-    date,       //date
-    location,   //what block entry is in the disk(lba sart)
-    sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
+    struct tm date,       //date
+    uint64_t location,   //what block entry is in the disk(lba sart)
+    uint64_t sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
     uint32_t flags;
     char name[NAME_LENGTH]; //file name limited to 128 char
 } dirEntry, *dirEntryPtr;
@@ -201,7 +201,12 @@ void loop(uint64_t blockSize) {
 
             printf("\n");
         } else if (strcmp(command[0], "mkdir") == 0) {
-            //mkdir(fsystem);
+            if (command.length > 1) {
+                mkdir(command[1]);
+            }else {
+                printf("please add directory name\n");
+                continue;
+            }
         } else if (strcmp(command[0], "cp") == 0) {
             printf("copying\n");
 //            copy(command[1], command[2], entry);
@@ -563,6 +568,22 @@ uint64_t fsWrite(int fd, char* source, uint64_t length)
     currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
 
     //if file closed write buffer
+}
+
+uint64_t mkdir(*char name){
+    dirEntryPtr *dir = malloc(sizeof(dirEntry));
+
+    time_t now;
+    struct tm *mytime = localtime(&now);
+    //populate data
+    dir = {
+        id,
+        mytime,
+        location,   //what block entry is in the disk(lba sart)
+        sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
+        flags;
+        char name[NAME_LENGTH];
+    };
 }
 
 // todo: notes on commands.
