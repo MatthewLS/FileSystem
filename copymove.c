@@ -34,8 +34,8 @@ int copymove(char *, char *);
 */
 //int copy(char *sourceFile, char *destination)
 //{
-//	FILE *sourceFilePtr,		 //pointer for sourcefile
-//		*destinationFilePtr;	 //pointer for destination file
+//	FILE *sourceFilePtr,		 //byteFromStart for sourcefile
+//		*destinationFilePtr;	 //byteFromStart for destination file
 //	char currWD[PATH_MAX],		 //current working directory
 //		*token,					 //token for extracting strings
 //		*sourceFileName,		 //holds filename
