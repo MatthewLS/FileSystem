@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
+#include <time.h>
 #include "copymove.c"
 #include "fsLow.c"
 //#include "Directory.h"
@@ -42,9 +44,9 @@ typedef struct fsStruct {
 
 typedef struct dirEntry {
     uint64_t id,    //id for ...
-    struct tm date,       //date
-    uint64_t location,   //what block entry is in the disk(lba sart)
-    uint64_t sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
+    date,       //date
+    location,   //what block entry is in the disk(lba sart)
+    sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
     uint32_t flags;
     char name[NAME_LENGTH]; //file name limited to 128 char
 } dirEntry, *dirEntryPtr;
@@ -64,8 +66,8 @@ typedef struct vcbStruct {
     uint64_t volSize,
             blockSize,
             numBlocks,
-            freeBlockLoc,
-            freeBlockBlocks,
+            freeBlockLoc,   //free block location
+    freeBlockBlocks,
             freeBlockLastAllocBit,
             freeBlockEndBlocksRemaining,
             freeBlockTotalFreeBlocks,
@@ -75,7 +77,8 @@ typedef struct vcbStruct {
 
 } vcbStruct, *vcbStructPtr;
 
-vcbStructPtr currVCBPtr;
+//vcbStructPtr currVCBPtr;
+vcbStruct *currVCBPtr;
 
 void fsRead(uint64_t);
 
@@ -99,7 +102,7 @@ int myFSOPEN(char *, int);
 
 int myFSSeek(int, uint64_t, int);
 
-uint64_t fsWrite(int, char*, uint64_t);
+uint64_t fsWrite(int, char *, uint64_t);
 
 
 // TODO: adjust start locations
@@ -108,6 +111,9 @@ int main(int argc, char *argv[]) {
     uint64_t volumeSize;
     uint64_t blockSize;
     int retVal;
+    currVCBPtr = malloc(sizeof(vcbStruct) * 1);
+    currVCBPtr->blockSize = 512;
+    openFileList = malloc(sizeof(openFileList) * 256);
 
     if (argc > 3) {
         fileName = argv[1];
@@ -119,6 +125,7 @@ int main(int argc, char *argv[]) {
     strcpy(fileName, "newfs");
     //retVal = startPartitionSystem("newfs", &volumeSize, &blockSize);
     retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
+    currVCBPtr->freeBlockLoc = 1;
     printf("Opened %s, Volume Size: %lu; BlockSize: %lu\n", fileName, volumeSize, blockSize);
     freeMap(volumeSize, blockSize);
     initRootDir(6, blockSize);
@@ -201,12 +208,7 @@ void loop(uint64_t blockSize) {
 
             printf("\n");
         } else if (strcmp(command[0], "mkdir") == 0) {
-            if (command.length > 1) {
-                mkdir(command[1]);
-            }else {
-                printf("please add directory name\n");
-                continue;
-            }
+            //mkdir(fsystem);
         } else if (strcmp(command[0], "cp") == 0) {
             printf("copying\n");
 //            copy(command[1], command[2], entry);
@@ -236,13 +238,33 @@ void loop(uint64_t blockSize) {
 
         } else if (strcmp(command[0], "write") == 0) {
             printf("write\n");
-            fsWrite2(tempLine, blockSize);
 
-            //      if (fd == NULL) {
-            //        printf("File could not be opened\n");
-            //  } else {
-            //writeFile(fd, source, sizeof(source)/sizeof(char) + 1);
-
+            //fsWrite2(tempLine, blockSize);
+            char *copiedText = malloc(BUFFSIZE * sizeof(char));  //temporary copied text
+            printf("in write function \n");
+            printf("line:%s\n", tempLine);
+            token = strtok(tempLine, "\""); //tokenizer
+            printf("got token\n");
+            while (token == NULL) { //empty case
+                printf(">");
+                fgets(tempLine, BUFFER_LENGTH, stdin);      //gets line since old one was empty
+                token = strtok(tempLine, " \n");
+            }
+            printf("tokenizing\n");
+            while (token != NULL) {
+                //printf("token:%s\n", token);
+                strcpy(copiedText, token);
+                token = strtok(NULL, "\"\n");
+            }
+            printf("Text that will be written is:%s\n", copiedText);
+            int length = sizeof(copiedText) / (sizeof(char) + 1);
+            printf("Length: %i\n", length);
+            int fd;
+            fd = fopen(command[1], "w");
+            if (fd == NULL)
+                printf("null\n");
+            printf("command: %s\n", command[1]);
+            fsWrite(fd, copiedText, length);
         } else {
             printf("Command not found.\n");
         }
@@ -432,6 +454,19 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
 
     //write buffer to disk
     LBAwrite(rootDirBuffer, blocksNeeded, startLoc);
+
+    openFileList[0].id = 0;
+    openFileList[0].flags = 1;
+    openFileList[0].size = 0;
+    openFileList[0].blockStart = currVCBPtr->freeBlockLoc;
+
+
+    openFileList[0].pointer = 512;
+//    openFileList[0].pointer = openFileList->pointer + length; //new file position
+//    currBlock = openFileList[0].pointer / currVCBPtr->blockSize;
+//    currOffset = openFileList[0].pointer % currVCBPtr->blockSize;
+
+    //bookmark
 }
 
 // TODO: getfreespace function
@@ -500,15 +535,13 @@ int myFSOpen(char *fileName, int method) {
  *
  *  Returns files pointer
  * */
-int myFSSeek(int fd, uint64_t position, int method)
-{
-    if(fd >= FDOPENMAX)
+int myFSSeek(int fd, uint64_t position, int method) {
+    if (fd >= FDOPENMAX)
         return -1;
-    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
+    if ((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
         return -1;
 
-    switch(method)
-    {
+    switch (method) {
         case MYSEEK_CUR:    //moving position position
             openFileList[fd].pointer += position;
             break;
@@ -521,7 +554,7 @@ int myFSSeek(int fd, uint64_t position, int method)
         default:
             break;
     }
-    return(openFileList[fd].pointer);
+    return (openFileList[fd].pointer);
 }
 
 
@@ -533,23 +566,64 @@ int myFSSeek(int fd, uint64_t position, int method)
  *
  *  Returns
  * */
-uint64_t fsWrite(int fd, char* source, uint64_t length)
-{
+uint64_t fsWrite(int fd, char *source, uint64_t length) {
+//    time_t t = time(NULL);
+//    struct tm *tm = localtime(&t);
+//    char s[64];
+//    assert(strftime(s, sizeof(s), "%c", tm));
+
+    time_t seconds;
+    seconds = time(NULL);
+
+    printf("In fs write\n");
     //checks if fd is in use
-    if(fd >= FDOPENMAX)
-        return -1;
-    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
-        return -1;
+//    if(fd >= FDOPENMAX)
+//        return -1;
+//    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
+//        return -1;
+
+    printf("after checks\n");
+
+    //printf("openfilelist: %i\n",fd);
+    fd = 0;
+    printf("changed fd\n");
+//    if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
+//    {
+//        fd = 0;
+//    }
 
     uint64_t currBlock = openFileList[fd].pointer / currVCBPtr->blockSize,  //block num
-        currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;  //remainder(where you are in the current block)
+    currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
-    if(length + currOffset < currVCBPtr->blockSize) //content fits into block
+    //todo: FD HARDCODED TO 0, ONLY CAN WRITE TO FIRST BLOCK, CHECK FOR FIRST RUN, IF FIRST RUN THEN FD = 0 ELSE FD NOT 0
+    // INSTEAD OF INDEXING BY FD CREATE A GLOBAL FILE COUNT THAT GETS INCREMENTED EVERYTIME FILE MADE
+    printf("blocksize: %lu|currblock: %lu\n", currVCBPtr->blockSize, currBlock);
+    if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
+        printf("first if\n");
+
+        //strcpy(openFileList[fd].fileBuffer, source);
+        openFileList[fd].fileBuffer = source;
+        printf("after: %s\n", openFileList[fd].fileBuffer);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
-    }
-    else if(length + currOffset > (currVCBPtr->blockSize * 2)) //content doesn't fit in space
+        openFileList[fd].id = seconds;
+        openFileList[fd].flags = 1;
+        openFileList[fd].size = length;
+        openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
+
+
+        openFileList[fd].pointer = openFileList->pointer + length; //new file position
+        currBlock = openFileList[fd].pointer / currVCBPtr->blockSize;
+        currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
+
+        printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
+        currVCBPtr->freeBlockLoc = currBlock + 1;
+        printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
+
+    } else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
     {
+
+        strcpy(openFileList[fd].fileBuffer, source);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
 
         //writeblock = translateFileBlock(fd, currBlock); //translates file(if contiguous)
@@ -557,33 +631,35 @@ uint64_t fsWrite(int fd, char* source, uint64_t length)
         // figure out filebuffer var.
         // openfilelist.filebuff?
         LBAwrite(openFileList[fd].fileBuffer, 2, currBlock + openFileList[fd].blockStart);
-        memcpy(openFileList[fd].fileBuffer, openFileList[fd].fileBuffer + currVCBPtr->blockSize, currVCBPtr->blockSize); // copies content into buffer
+        memcpy(openFileList[fd].fileBuffer, openFileList[fd].fileBuffer + currVCBPtr->blockSize,
+               currVCBPtr->blockSize); // copies content into buffer
+
+
+        openFileList[fd].id = seconds;
+        openFileList[fd].flags = 1;
+        openFileList[fd].size = length;
+        openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
+
+
+        openFileList[fd].pointer = openFileList->pointer + length; //new file position
+        currBlock = openFileList[fd].pointer / currVCBPtr->blockSize;
+        currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
+
+        printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
+        currVCBPtr->freeBlockLoc = currBlock + 2;
+        printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
+
+    } else {
+        printf("Content doesn't fit\n");
     }
-    else
-    {
-
-    }
-    openFileList[fd].pointer = openFileList->pointer + length; //new file position
-    currBlock = openFileList[fd].pointer / currVCBPtr->blockSize;
-    currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
-
-    //if file closed write buffer
-}
-
-uint64_t mkdir(*char name){
-    dirEntryPtr *dir = malloc(sizeof(dirEntry));
-
-    time_t now;
-    struct tm *mytime = localtime(&now);
-    //populate data
-    dir = {
-        id,
-        mytime,
-        location,   //what block entry is in the disk(lba sart)
-        sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
-        flags;
-        char name[NAME_LENGTH];
-    };
+//    openFileList[fd].pointer = openFileList->pointer + length; //new file position
+//    currBlock = openFileList[fd].pointer / currVCBPtr->blockSize;
+//    currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
+//
+//    printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
+//    currVCBPtr->freeBlockLoc = currBlock + 1;
+//    printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
+//    //if file closed write buffer
 }
 
 // todo: notes on commands.
