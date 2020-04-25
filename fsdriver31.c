@@ -157,10 +157,10 @@ void loop(uint64_t blockSize) {
 
     while (stat) {
         printf("enter command");
-        command = malloc(MAXCOMMLIST * sizeof(char));
+        command = malloc(BUFFSIZE * sizeof(char));
         if (command == NULL)
             printf("could not allocate space\n");
-        for (int i = 0; i < MAXCOMMLIST; i++) {
+        for (int i = 0; i < BUFFSIZE ; i++) {
             command[i] = malloc(BUFFER_LENGTH * sizeof(char));
             if (command[i] == NULL)
                 printf("could not allocate space\n");
@@ -170,8 +170,19 @@ void loop(uint64_t blockSize) {
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
         printf("line: %s\n", line);
+        if((sizeof(line) / sizeof(char) + 1) > BUFFER_LENGTH)
+        {
+            printf("over256\n");
+            line = realloc(line, BUFFER_LENGTH * 3);
+        }
+
         char *tempLine = malloc(BUFFER_LENGTH * sizeof(char));
+        if((sizeof(tempLine) / sizeof(char) + 1) > BUFFER_LENGTH){
+            printf("realloc templine\n");
+            tempLine = realloc(tempLine, BUFFER_LENGTH * 3);
+        }
         strcpy(tempLine, line);
+
         token = strtok(line, " \n");
         printf("got token\n");
         while (token == NULL) {
@@ -254,6 +265,10 @@ void loop(uint64_t blockSize) {
             while (token != NULL) {
                 //printf("token:%s\n", token);
                 strcpy(copiedText, token);
+                if((sizeof(copiedText) / (sizeof(char) + 1)) > BUFFSIZE) {
+                    printf("realloc\n");
+                    copiedText = realloc(copiedText, BUFFSIZE);
+                }
                 token = strtok(NULL, "\"\n");
             }
             printf("Text that will be written is:%s\n", copiedText);
@@ -325,6 +340,8 @@ int fsWrite2(char *line, uint64_t blockSize) {
     printf("Text that will be written is:%s\n", copiedText);
     pBuf->counter = 103958; //counter?
     pBuf->size = 85775875;  //size?
+
+    //bookmark 2
 //    textToWrite = (char *) pBuf;    //?
 //    textToWrite = textToWrite + 256;    //allocate space?
     printf("before copy to text\n");
@@ -597,11 +614,11 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
     //todo: FD HARDCODED TO 0, ONLY CAN WRITE TO FIRST BLOCK, CHECK FOR FIRST RUN, IF FIRST RUN THEN FD = 0 ELSE FD NOT 0
     // INSTEAD OF INDEXING BY FD CREATE A GLOBAL FILE COUNT THAT GETS INCREMENTED EVERYTIME FILE MADE
-    printf("blocksize: %lu|currblock: %lu\n", currVCBPtr->blockSize, currBlock);
+    printf("length: %lu|blocksize: %lu|currblock: %lu\n",length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
         printf("first if\n");
-
+        //openFileList[fd].fileBuffer = malloc(sizeof(char) * BUFFSIZE);
         //strcpy(openFileList[fd].fileBuffer, source);
         openFileList[fd].fileBuffer = source;
         printf("after: %s\n", openFileList[fd].fileBuffer);
@@ -616,13 +633,18 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         currBlock = openFileList[fd].pointer / currVCBPtr->blockSize;
         currOffset = openFileList[fd].pointer % currVCBPtr->blockSize;
 
+
+
+        LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + openFileList[fd].blockStart);
         printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
         currVCBPtr->freeBlockLoc = currBlock + 1;
         printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
 
+
+
     } else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
     {
-
+        printf("second statement\n");
         strcpy(openFileList[fd].fileBuffer, source);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
 
