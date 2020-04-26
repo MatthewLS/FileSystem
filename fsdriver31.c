@@ -9,9 +9,15 @@
 #include <unistd.h>
 #include <time.h>
 #include "copymove.c"
-#include "fsLow.c"
+#include "fsLow.h"
 #include "hashImplement.c"
+#include <limits.h>
+#include <stdint.h>
+#include "fsLow.h"
+#include "fsLow.c"
 //#include "Directory.h"
+#include <time.h>
+#include <assert.h>
 
 #define AVGDIRECTORYENTRIES 50
 #define EXIT_SUCCESS 0
@@ -54,7 +60,7 @@ typedef struct dirEntry {
 
 typedef struct OpenFileEntry {
     int flags;  //flags of file
-    uint64_t byteFromStart,   //where you are in file
+    uint64_t bytesFromStart,   //where you are in file
     size,   //size of file(in bytes)
     id, //id of file
     blockStart; //start block
@@ -85,7 +91,7 @@ ht_t* hashTable;            //hash table variable
 int latestID = 0;     //counter for # of files/file id's
 
 
-void fsRead(uint64_t);
+char* fsRead(uint64_t);
 
 int fsWrite2(char *, uint64_t);
 
@@ -126,14 +132,16 @@ int main(int argc, char *argv[]) {
         volumeSize = atoll(argv[2]);
         blockSize = atoll(argv[3]);
     }
-    volumeSize = 10000000;
-    blockSize = 512;
-    strcpy(fileName, "newfs");
-    //retVal = startPartitionSystem("newfs", &volumeSize, &blockSize);
+//    volumeSize = 10000000;
+//    blockSize = 512;
+//    strcpy(fileName, "newfs");
     retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
+//    retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
     currVCBPtr->freeBlockLoc = 1;
     printf("Opened %s, Volume Size: %lu; BlockSize: %lu\n", fileName, volumeSize, blockSize);
-    freeMap(volumeSize, blockSize);
+
+//    freeMap(volumeSize, blockSize); look at this later
+
     initRootDir(6, blockSize);
     hashTable = ht_create();
     loop(blockSize);
@@ -164,7 +172,7 @@ void loop(uint64_t blockSize) {
 
     while (stat) {
         printf("enter command");
-        command = malloc(BUFFSIZE * sizeof(char));
+        command = malloc(BUFFSIZE  * sizeof(char));
         if (command == NULL)
             printf("could not allocate space\n");
         for (int i = 0; i < BUFFSIZE ; i++) {
@@ -312,12 +320,14 @@ void loop(uint64_t blockSize) {
  *
  *  No return
  * */
-void fsRead(uint64_t blockSize) {
+char* fsRead(uint64_t blockSize) {
     fsStructPtr pBuf = malloc(blockSize * 2);
     int retVal = LBAread(pBuf, 2, 12);
     printf("text:%s\n", pBuf->name);
+    char *readContent;
+    strcpy(readContent, pBuf->name);
     free(pBuf);
-
+    return readContent;
 }
 
 
@@ -450,7 +460,7 @@ void freeMap(uint64_t volumeSize, uint64_t blockSize) {
  */
 
 void initRootDir(uint64_t startLoc, uint64_t blockSize) {
-    dirEntryPtr rootDirBuffer;  //byteFromStart to directory entry
+    dirEntryPtr rootDirBuffer;  //bytesFromStart to directory entry
     uint64_t entrySize = sizeof(dirEntry), //size of entry itself
     bytesNeeded = AVGDIRECTORYENTRIES * entrySize, //initialize base bytes needed for directory of AVGDIRENTRY size
     blocksNeeded = (bytesNeeded + (blockSize - 1)) / blockSize, //base blocks ^
@@ -474,7 +484,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
         rootDirBuffer[i].sizeinBytes = 0;
     }
 
-    //needs byteFromStart of root's parent now
+    //needs bytesFromStart of root's parent now
     rootDirBuffer[0].id = 1000; //random location
     rootDirBuffer[0].flags = 0; //0 for directory
     strcpy(rootDirBuffer[0].name, "root");    //roots name
@@ -491,10 +501,11 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     openFileList[0].blockStart = currVCBPtr->freeBlockLoc;
 
 
-    openFileList[0].byteFromStart = 512;
-//    openFileList[0].byteFromStart = openFileList->byteFromStart + length; //new file position
-//    currBlock = openFileList[0].byteFromStart / currVCBPtr->blockSize;
-//    currOffset = openFileList[0].byteFromStart % currVCBPtr->blockSize;
+
+    openFileList[0].bytesFromStart = 0;
+//    openFileList[0].bytesFromStart = openFileList->bytesFromStart + length; //new file position
+//    currBlock = openFileList[0].bytesFromStart / currVCBPtr->blockSize;
+//    currOffset = openFileList[0].bytesFromStart % currVCBPtr->blockSize;
 
     //bookmark
 }
@@ -535,21 +546,28 @@ uint64_t getNewFileID() {
  *
  *  Returns file descriptor
  * */
-int myFSOpen(char *fileName, int method) {
+int myFSOpen(char *fileName) {
     int fd; //file descriptor
 
-    //gets file descriptor, looks for structure thats free
-    for (int i = 0; i < FDOPENMAX; i++) {
-        if (openFileList[i].flags == FDOPENFREE) {
-            fd = i;
-            break;
-        }
+    fd = ht_get(hashTable, fileName);
+
+    if(fd == 0)
+    {
+       printf("File does not exist");
     }
+
+    //gets file descriptor, looks for structure thats free
+//    for (int i = 0; i < FDOPENMAX; i++) {
+//        if (openFileList[i].flags == FDOPENFREE) {
+//            fd = i;
+//            break;
+//        }
+//    }
 
     //find file in directory, null if file does not exist
 //    openFileList[i].flags = FDOPENINUSE | FDOPENFORREAD | FDOPENFORWRITE;
 //    openFileList[i].fileBuff = malloc(currVCBPtr->blockSize * 2);
-//    openFileList[i].byteFromStart = 0;
+//    openFileList[i].bytesFromStart = 0;
 //    openFileList[i].size = 0;
 
     return (fd);
@@ -557,13 +575,13 @@ int myFSOpen(char *fileName, int method) {
 
 //todo: figure out myfsseek
 
-/*  This function is similar to seek function. moves file byteFromStart position
+/*  This function is similar to seek function. moves file bytesFromStart position
  *
  *  Parameters: fd-- filedescriptor
  *  position-- position of (?)
  *  method-- method of (?)
  *
- *  Returns files byteFromStart
+ *  Returns files bytesFromStart
  * */
 int myFSSeek(int fd, uint64_t position, int method) {
     if (fd >= FDOPENMAX)
@@ -573,18 +591,48 @@ int myFSSeek(int fd, uint64_t position, int method) {
 
     switch (method) {
         case MYSEEK_CUR:    //moving position position
-            openFileList[fd].byteFromStart += position;
+            openFileList[fd].bytesFromStart += position;
             break;
         case MYSEEK_POS:    //current position
-            openFileList[fd].byteFromStart = position;
+            openFileList[fd].bytesFromStart = position;
             break;
         case MYSEEK_END:    //end position?
-            openFileList[fd].byteFromStart = openFileList[fd].size + position;
+            openFileList[fd].bytesFromStart = openFileList[fd].size + position;
             break;
         default:
             break;
     }
-    return (openFileList[fd].byteFromStart);
+    return (openFileList[fd].bytesFromStart);
+}
+
+
+int copyFile(char *fileName, char *destination)
+{
+    int sourceFile;
+    int destinationFile;
+    char *contents;
+
+    sourceFile = myFSOpen(fileName);
+    if(sourceFile == 0)
+    {
+        return 0;
+    }
+
+    destinationFile = myFSOpen(destination);
+    if (destinationFile == 0)
+    {
+        return 0;
+    }
+//    openFileList[destinationFile].id = openFileList[sourceFile].id;
+    openFileList[destinationFile].flags = openFileList[sourceFile].flags;
+    openFileList[destinationFile].size = openFileList[sourceFile].size;
+//    openFileList[destinationFile].blockStart = currVCBPtr->freeBlockLoc;
+    openFileList[destinationFile].bytesFromStart = 0; //new file position
+    strcpy(contents, fsRead(sourceFile));
+    int length = strlen(contents);
+
+    fsWrite(destinationFile, contents, length);
+
 }
 
 
@@ -597,10 +645,9 @@ int myFSSeek(int fd, uint64_t position, int method) {
  *  Returns
  * */
 uint64_t fsWrite(int fd, char *source, uint64_t length) {
-//    time_t t = time(NULL);
-//    struct tm *tm = localtime(&t);
-//    char s[64];
-//    assert(strftime(s, sizeof(s), "%c", tm));
+//    Needs to return whether or not it passed
+//todo: write open file list and currvcbptr to disk so that when we reopen the filesystem we can pick up where we left off
+
 
     int tempCheck; //check if filename exists
     time_t seconds;
@@ -619,13 +666,19 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
     {
         if(fd == 1)
+        {
             openFileList[fd] = openFileList[0];
+            openFileList[fd].bytesFromStart = 512;
+        }
         else
+        {
             openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
+            openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
+        }
     }
 
-    uint64_t currBlock = openFileList[fd].byteFromStart / currVCBPtr->blockSize,  //block num
-    currOffset = openFileList[fd].byteFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
+    uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize,  //block num
+    currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
 
     //todo: FD HARDCODED TO 0, ONLY CAN WRITE TO FIRST BLOCK, CHECK FOR FIRST RUN, IF FIRST RUN THEN FD = 0 ELSE FD NOT 0
@@ -634,27 +687,39 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
         printf("first if\n");
-        //openFileList[fd].fileBuffer = malloc(sizeof(char) * BUFFSIZE);
-        //strcpy(openFileList[fd].fileBuffer, source);
-        openFileList[fd].fileBuffer = source;
-        printf("after: %s\n", openFileList[fd].fileBuffer);
+
+        openFileList[fd].fileBuffer =  source;
+//        strcat(openFileList[fd].fileBuffer, source);
+        printf("File content: %s\n", openFileList[fd].fileBuffer);
+        printf("current offset %lu\n", currOffset);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
+        printf("File content: %s\n", openFileList[fd].fileBuffer);
         openFileList[fd].id = seconds;
         openFileList[fd].flags = 1;
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
 
-        openFileList[fd].byteFromStart = openFileList->byteFromStart + length; //new file position
-        currBlock = openFileList[fd].byteFromStart / currVCBPtr->blockSize;
-        currOffset = openFileList[fd].byteFromStart % currVCBPtr->blockSize;
+//        currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
+//        currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;
+        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
+        currBlock = currVCBPtr->freeBlockLoc;
+        if (openFileList[fd].bytesFromStart != 0)
+        {
+            printf("Editing file\n");
+            currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
+        } else
+        {
+            currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 1;
+        }
+        openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
 
+        printf("content: %s\n", openFileList[fd].fileBuffer);
+        printf("currBlock: %lu\n", currBlock);
+        printf("currOffset: %lu\n", currOffset);
+        LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + currOffset );
 
-
-        LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + openFileList[fd].blockStart);
-        printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
-        currVCBPtr->freeBlockLoc = currBlock + 1;
-        printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
+        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
 
 
@@ -679,20 +744,29 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
 
-        openFileList[fd].byteFromStart = openFileList->byteFromStart + length; //new file position
-        currBlock = openFileList[fd].byteFromStart / currVCBPtr->blockSize;
-        currOffset = openFileList[fd].byteFromStart % currVCBPtr->blockSize;
+        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
+        currBlock = currVCBPtr->freeBlockLoc;
+        if (openFileList[fd].bytesFromStart != 0)
+        {
+            printf("Editing file\n");
+            currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
+        } else
+        {
+            currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 2;
+        }
+        openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
 
-        printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
-        currVCBPtr->freeBlockLoc = currBlock + 2;
-        printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
+        LBAwrite(openFileList[fd].fileBuffer, 2, currBlock + openFileList[fd].blockStart);
+
+        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
+
 
     } else {
         printf("Content doesn't fit\n");
     }
-//    openFileList[fd].byteFromStart = openFileList->byteFromStart + length; //new file position
-//    currBlock = openFileList[fd].byteFromStart / currVCBPtr->blockSize;
-//    currOffset = openFileList[fd].byteFromStart % currVCBPtr->blockSize;
+//    openFileList[fd].bytesFromStart = openFileList->bytesFromStart + length; //new file position
+//    currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
+//    currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;
 //
 //    printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
 //    currVCBPtr->freeBlockLoc = currBlock + 1;

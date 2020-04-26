@@ -18,11 +18,11 @@
 typedef struct entry_t {
     char* fileName;              //key word
     int fileID;              //value of the key
-    struct entry_t* next;   //byteFromStart to next entry(in case of collision will chain the value)
+    struct entry_t* next;   //bytesFromStart to next entry(in case of collision will chain the value)
 } entry_t;
 
 typedef struct {
-    entry_t** entries;      //byteFromStart to the entries, in a hash table
+    entry_t** entries;      //bytesFromStart to the entries, in a hash table
 } ht_t;
 
 
