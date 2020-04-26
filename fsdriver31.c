@@ -677,9 +677,6 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     printf("length: %lu|blocksize: %lu|currblock: %lu\n",length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
-        int size = sizeof(struct dirEntry);
-
-        printf("Size of dir entry: %d\n", size);
         printf("first if\n");
 
 
@@ -696,7 +693,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
-        if (openFileList[fd].bytesFromStart != 0)
+        if (openFileList[fd].bytesFromStart%512 != 0)
         {
             printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
