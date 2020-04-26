@@ -50,7 +50,7 @@ typedef struct fsStruct {
 } fsStruct, *fsStructPtr;
 
 typedef struct dirEntry {
-    uint64_t id,    //id for ...
+    uint64_t id,    //dateModified for ...
     date,       //date
     location,   //what block entry is in the disk(lba sart)
     sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
@@ -62,9 +62,11 @@ typedef struct OpenFileEntry {
     int flags;  //flags of file
     uint64_t bytesFromStart,   //where you are in file
     size,   //size of file(in bytes)
-    id, //id of file
+    dateModified,
+    dateCreated,//dateModified of file
     blockStart; //start block
     char *fileBuffer;   //file buffer(contents?)
+    char *fileName;
 } openFileEntry, *openFileEntryPtr;
 
 openFileEntry *openFileList;   //array of currently open files
@@ -88,10 +90,12 @@ typedef struct vcbStruct {
 vcbStruct *currVCBPtr;
 
 ht_t* hashTable;            //hash table variable
-int latestID = 0;     //counter for # of files/file id's
+int latestID = 0;     //counter for # of files/file dateModified's
 
 
 char* fsRead(uint64_t);
+
+int copyFile(char *, char *);
 
 int fsWrite2(char *, uint64_t);
 
@@ -237,7 +241,7 @@ void loop(uint64_t blockSize) {
             //mkdir(fsystem);
         } else if (strcmp(command[0], "cp") == 0) {
             printf("copying\n");
-//            copy(command[1], command[2], entry);
+            copyFile(command[1], command[2]);
         } else if (strcmp(command[0], "move") == 0) {
             printf("move\n");
         } else if (strcmp(command[0], "touch") == 0) {
@@ -495,7 +499,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     //write buffer to disk
     LBAwrite(rootDirBuffer, blocksNeeded, startLoc);
 
-    openFileList[0].id = 0;
+    openFileList[0].dateModified = 0;
     openFileList[0].flags = 1;
     openFileList[0].size = 0;
     openFileList[0].blockStart = currVCBPtr->freeBlockLoc;
@@ -523,11 +527,11 @@ int getFreeSpace(uint64_t blocksNeeded, int contig) {
     return 0;
 }
 
-/*  This function gets a file id of a (processs?) used for directory structure
+/*  This function gets a file dateModified of a (processs?) used for directory structure
  *
  *  No parameter
  *
- *  Returns file id
+ *  Returns file dateModified
  * */
 uint64_t getNewFileID() {
     uint64_t retVal;
@@ -548,27 +552,17 @@ uint64_t getNewFileID() {
  * */
 int myFSOpen(char *fileName) {
     int fd; //file descriptor
-
     fd = ht_get(hashTable, fileName);
+    time_t seconds;
+    seconds = time(NULL);
 
     if(fd == 0)
     {
-       printf("File does not exist");
+        ht_set(hashTable, fileName, latestID);
     }
-
-    //gets file descriptor, looks for structure thats free
-//    for (int i = 0; i < FDOPENMAX; i++) {
-//        if (openFileList[i].flags == FDOPENFREE) {
-//            fd = i;
-//            break;
-//        }
-//    }
-
-    //find file in directory, null if file does not exist
-//    openFileList[i].flags = FDOPENINUSE | FDOPENFORREAD | FDOPENFORWRITE;
-//    openFileList[i].fileBuff = malloc(currVCBPtr->blockSize * 2);
-//    openFileList[i].bytesFromStart = 0;
-//    openFileList[i].size = 0;
+//    Setting file name when file is created
+    openFileList[fd].fileName = fileName;
+    openFileList[fd].dateCreated = seconds;
 
     return (fd);
 }
@@ -610,7 +604,9 @@ int copyFile(char *fileName, char *destination)
 {
     int sourceFile;
     int destinationFile;
-    char *contents;
+    char *contents = "";
+    time_t seconds;
+    seconds = time(NULL);
 
     sourceFile = myFSOpen(fileName);
     if(sourceFile == 0)
@@ -623,16 +619,13 @@ int copyFile(char *fileName, char *destination)
     {
         return 0;
     }
-//    openFileList[destinationFile].id = openFileList[sourceFile].id;
-    openFileList[destinationFile].flags = openFileList[sourceFile].flags;
-    openFileList[destinationFile].size = openFileList[sourceFile].size;
-//    openFileList[destinationFile].blockStart = currVCBPtr->freeBlockLoc;
-    openFileList[destinationFile].bytesFromStart = 0; //new file position
     strcpy(contents, fsRead(sourceFile));
-    int length = strlen(contents);
+    unsigned long length = strlen(contents);
 
     fsWrite(destinationFile, contents, length);
+    printf("File written");
 
+    return 1;
 }
 
 
@@ -662,7 +655,6 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //        return -1;
 
     printf("after checks\n");
-    //printf("openfilelist: %i\n",fd);
     if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
     {
         if(fd == 1)
@@ -680,28 +672,28 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize,  //block num
     currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
-
     //todo: FD HARDCODED TO 0, ONLY CAN WRITE TO FIRST BLOCK, CHECK FOR FIRST RUN, IF FIRST RUN THEN FD = 0 ELSE FD NOT 0
     // INSTEAD OF INDEXING BY FD CREATE A GLOBAL FILE COUNT THAT GETS INCREMENTED EVERYTIME FILE MADE
     printf("length: %lu|blocksize: %lu|currblock: %lu\n",length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
+        int size = sizeof(struct dirEntry);
+
+        printf("Size of dir entry: %d\n", size);
         printf("first if\n");
 
-        openFileList[fd].fileBuffer =  source;
-//        strcat(openFileList[fd].fileBuffer, source);
+
+        openFileList[fd].fileBuffer = source;
         printf("File content: %s\n", openFileList[fd].fileBuffer);
         printf("current offset %lu\n", currOffset);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
         printf("File content: %s\n", openFileList[fd].fileBuffer);
-        openFileList[fd].id = seconds;
+        openFileList[fd].dateModified = seconds;
         openFileList[fd].flags = 1;
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
 
-//        currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
-//        currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;
         printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
         if (openFileList[fd].bytesFromStart != 0)
@@ -721,8 +713,6 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
-
-
     } else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
     {
         printf("second statement\n");
@@ -731,18 +721,14 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         //writeblock = translateFileBlock(fd, currBlock); //translates file(if contiguous)
         //todo: lbawrite.
-        // figure out filebuffer var.
-        // openfilelist.filebuff?
         LBAwrite(openFileList[fd].fileBuffer, 2, currBlock + openFileList[fd].blockStart);
         memcpy(openFileList[fd].fileBuffer, openFileList[fd].fileBuffer + currVCBPtr->blockSize,
                currVCBPtr->blockSize); // copies content into buffer
 
-
-        openFileList[fd].id = seconds;
+        openFileList[fd].dateModified = seconds;
         openFileList[fd].flags = 1;
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
-
 
         printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
@@ -760,17 +746,9 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
-
     } else {
         printf("Content doesn't fit\n");
     }
-//    openFileList[fd].bytesFromStart = openFileList->bytesFromStart + length; //new file position
-//    currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
-//    currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;
-//
-//    printf("freeblockloc before: %lu\n", currVCBPtr->freeBlockLoc);
-//    currVCBPtr->freeBlockLoc = currBlock + 1;
-//    printf("freeblockloc: %lu\n", currVCBPtr->freeBlockLoc);
 //    //if file closed write buffer
 }
 
@@ -806,13 +784,13 @@ int fileIDCheck(char * filename)
     if(tempCheck == 0)  //file does not exist
     {
         //todo:check file space
-        latestID++; //increment id
+        latestID++; //increment dateModified
         ht_set(hashTable, filename, latestID);  //adds file to hashtable
-        tempCheck = ht_get(hashTable,filename); //gets hashed id of file
-        return tempCheck;   //returns id of file
+        tempCheck = ht_get(hashTable,filename); //gets hashed dateModified of file
+        return tempCheck;   //returns dateModified of file
     }
     else //file exists
     {
-        return tempCheck;       //return id
+        return tempCheck;       //return dateModified
     }
 }
