@@ -638,9 +638,7 @@ int copyFile(char *fileName, char *destination)
  *  Returns
  * */
 uint64_t fsWrite(int fd, char *source, uint64_t length) {
-//    Needs to return whether or not it passed
 //todo: write open file list and currvcbptr to disk so that when we reopen the filesystem we can pick up where we left off
-
 
     int tempCheck; //check if filename exists
     time_t seconds;
@@ -672,13 +670,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize,  //block num
     currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
-    //todo: FD HARDCODED TO 0, ONLY CAN WRITE TO FIRST BLOCK, CHECK FOR FIRST RUN, IF FIRST RUN THEN FD = 0 ELSE FD NOT 0
-    // INSTEAD OF INDEXING BY FD CREATE A GLOBAL FILE COUNT THAT GETS INCREMENTED EVERYTIME FILE MADE
     printf("length: %lu|blocksize: %lu|currblock: %lu\n",length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
         printf("first if\n");
-
 
         openFileList[fd].fileBuffer = source;
         printf("File content: %s\n", openFileList[fd].fileBuffer);
@@ -690,10 +685,9 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
-
         printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
-        if (openFileList[fd].bytesFromStart%512 != 0)
+        if (openFileList[fd].bytesFromStart % 512 != 0)
         {
             printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
@@ -746,7 +740,8 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     } else {
         printf("Content doesn't fit\n");
     }
-//    //if file closed write buffer
+//  returning 0 for success
+    return 0;
 }
 
 // todo: notes on commands.
