@@ -631,6 +631,7 @@ int copyFile(char *fileName, char *destination)
 
 void removeFile(char *filename)
 {
+//    todo: reallocate this memory for use in write functions
     ht_del(hashTable, filename);
     printf("Deleted %s\n", filename);
 }
