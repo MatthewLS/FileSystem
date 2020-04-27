@@ -93,7 +93,7 @@ ht_t* hashTable;            //hash table variable
 int latestID = 0;     //counter for # of files/file dateModified's
 
 
-char* fsRead(uint64_t);
+char* fsRead(int);
 
 int copyFile(char *, char *);
 
@@ -264,7 +264,7 @@ void loop(uint64_t blockSize) {
             printf("remove\n");
         } else if (strcmp(command[0], "read") == 0) {
             printf("read\n");
-            fsRead(blockSize);
+            fsRead(fileIDCheck(command[1]));
 
         } else if (strcmp(command[0], "write") == 0) {
             printf("write\n");
@@ -324,14 +324,14 @@ void loop(uint64_t blockSize) {
  *
  *  No return
  * */
-char* fsRead(uint64_t blockSize) {
-    fsStructPtr pBuf = malloc(blockSize * 2);
-    int retVal = LBAread(pBuf, 2, 12);
-    printf("text:%s\n", pBuf->name);
-    char *readContent;
-    strcpy(readContent, pBuf->name);
-    free(pBuf);
-    return readContent;
+char* fsRead(int fileId) {
+    char *pBuf = malloc(currVCBPtr->blockSize * 2);
+    printf("blockstart: %lu\n", openFileList[fileId].blockStart);
+    printf("fileId: %d\n", fileId);
+    int retVal = LBAread(pBuf, 1, openFileList[fileId].blockStart);
+
+    printf("text:%s\n", pBuf);
+    return pBuf;
 }
 
 
@@ -558,9 +558,12 @@ int myFSOpen(char *fileName) {
 
     if(fd == 0)
     {
+        latestID++;
+        printf("lastestID: %d\n", latestID);
         ht_set(hashTable, fileName, latestID);
+        fd = latestID;
     }
-//    Setting file name when file is created
+//  Setting file name when file is created
     openFileList[fd].fileName = fileName;
     openFileList[fd].dateCreated = seconds;
 
@@ -604,10 +607,11 @@ int copyFile(char *fileName, char *destination)
 {
     int sourceFile;
     int destinationFile;
-    char *contents = "";
+    char *contents = malloc(sizeof(char) * currVCBPtr->blockSize);
     time_t seconds;
     seconds = time(NULL);
 
+//  return 0 for success
     sourceFile = myFSOpen(fileName);
     if(sourceFile == 0)
     {
@@ -619,11 +623,16 @@ int copyFile(char *fileName, char *destination)
     {
         return 0;
     }
+    printf("Before string copy");
+
     strcpy(contents, fsRead(sourceFile));
+    printf("After string copy");
+
     unsigned long length = strlen(contents);
+    printf("contents: %s\n", contents);
 
     fsWrite(destinationFile, contents, length);
-    printf("File written");
+    printf("File written\n");
 
     return 1;
 }
