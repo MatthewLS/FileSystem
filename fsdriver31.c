@@ -76,7 +76,7 @@ typedef struct vcbStruct {
             blockSize,
             numBlocks,
             freeBlockLoc,   //free block location
-    freeBlockBlocks,
+            freeBlockBlocks,
             freeBlockLastAllocBit,
             freeBlockEndBlocksRemaining,
             freeBlockTotalFreeBlocks,
@@ -96,6 +96,8 @@ int latestID = 0;     //counter for # of files/file dateModified's
 char* fsRead(int);
 
 void addFile(int);
+
+void removeFile(char *);
 
 int copyFile(char *, char *);
 
@@ -251,6 +253,7 @@ void loop(uint64_t blockSize) {
             addFile(fileIDCheck(command[1]));
         } else if (strcmp(command[0], "rm") == 0) {
             printf("remove\n");
+            removeFile(command[1]);
         } else if (strcmp(command[0], "read") == 0) {
             printf("read\n");
             fsRead(fileIDCheck(command[1]));
@@ -626,6 +629,12 @@ int copyFile(char *fileName, char *destination)
     return 1;
 }
 
+void removeFile(char *filename)
+{
+    ht_del(hashTable, filename);
+    printf("Deleted %s\n", filename);
+}
+
 void addFile(int fd)
 {
     if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
@@ -648,6 +657,7 @@ void addFile(int fd)
     printf("free block location: %lu\n", currVCBPtr->freeBlockLoc);
     printf("current block location: %lu\n", currBlock);
     LBAwrite(temp, 1, currBlock);
+    currVCBPtr->freeBlockLoc++;
 }
 
 /*  This function writes content to the filesystem
