@@ -42,12 +42,7 @@
 #define MYSEEK_CUR 1
 #define MYSEEK_POS 2
 #define MYSEEK_END 3
-typedef struct fsStruct {
-    int counter;
-    int size;
-    char spacer[256 - (sizeof(int) * 2)],
-            name[];
-} fsStruct, *fsStructPtr;
+
 
 int currentDir = 0;
 
