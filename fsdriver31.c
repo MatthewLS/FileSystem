@@ -67,12 +67,13 @@ typedef struct OpenFileEntry {
     uint64_t bytesFromStart,   //where you are in file
     size,   //size of file(in bytes)
     dateModified,
-    dateCreated,//dateModified of file
+            dateCreated,//dateModified of file
     blockStart; //start block
     char *fileBuffer;   //file buffer(contents?)
     int parentId;
     int dirChildren[AVGDIRECTORYENTRIES];
     int numOfChildren;
+    int childElementIndex;
     char *name;
     int isNewFile;   //1 == should be new file 0 == should overwrite
 } openFileEntry, *openFileEntryPtr;
@@ -84,7 +85,7 @@ typedef struct vcbStruct {
             blockSize,
             numBlocks,
             freeBlockLoc,   //free block location
-            freeBlockBlocks,
+    freeBlockBlocks,
             freeBlockLastAllocBit,
             freeBlockEndBlocksRemaining,
             freeBlockTotalFreeBlocks,
@@ -97,21 +98,23 @@ typedef struct vcbStruct {
 //vcbStructPtr currVCBPtr;
 vcbStruct *currVCBPtr;
 
-ht_t* hashTable;            //hash table variable
+ht_t *hashTable;            //hash table variable
 int latestID = 0;     //counter for # of files/file dateModified's
 
 
-char* fsRead(int);
+char *fsRead(int);
 
 void createDir(char *, int);
 
-void changeDirectory(char*);
+void changeDirectory(char *);
 
 void listFiles();
 
 void addFile(int);
 
 void removeFile(char *);
+
+void cptofs(char *, int);
 
 int copyFile(char *, char *);
 
@@ -137,9 +140,8 @@ int myFSSeek(int, uint64_t, int);
 
 uint64_t fsWrite(int, char *, uint64_t);
 
-int fileIDCheck(char*);
+int fileIDCheck(char *);
 
-// TODO: adjust start locations
 int main(int argc, char *argv[]) {
     char *fileName;
     uint64_t volumeSize;
@@ -194,10 +196,10 @@ void loop(uint64_t blockSize) {
 
     while (stat) {
         printf("enter command");
-        command = malloc(BUFFSIZE  * sizeof(char));
+        command = malloc(BUFFSIZE * sizeof(char));
         if (command == NULL)
             printf("could not allocate space\n");
-        for (int i = 0; i < BUFFSIZE ; i++) {
+        for (int i = 0; i < BUFFSIZE; i++) {
             command[i] = malloc(BUFFER_LENGTH * sizeof(char));
             if (command[i] == NULL)
                 printf("could not allocate space\n");
@@ -207,14 +209,13 @@ void loop(uint64_t blockSize) {
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
         printf("line: %s\n", line);
-        if((sizeof(line) / sizeof(char) + 1) > BUFFER_LENGTH)
-        {
+        if ((sizeof(line) / sizeof(char) + 1) > BUFFER_LENGTH) {
             printf("over256\n");
             line = realloc(line, BUFFER_LENGTH * 3);
         }
 
         char *tempLine = malloc(BUFFER_LENGTH * sizeof(char));
-        if((sizeof(tempLine) / sizeof(char) + 1) > BUFFER_LENGTH){
+        if ((sizeof(tempLine) / sizeof(char) + 1) > BUFFER_LENGTH) {
             printf("realloc templine\n");
             tempLine = realloc(tempLine, BUFFER_LENGTH * 3);
         }
@@ -254,13 +255,15 @@ void loop(uint64_t blockSize) {
             printf("rm - remove a file/directory\n");
             printf("cp - copy a file/directory from one path to other\n");
 
+            printf("cptofs - copy a file from virtual FS to real FS\n");
+
             printf("\n");
         } else if (strcmp(command[0], "mkdir") == 0) {
             printf("making a directory\n");
             createDir(command[1], fileIDCheck(command[1]));
-        } else if (strcmp(command[0],"cd")==0){
+        } else if (strcmp(command[0], "cd") == 0) {
             changeDirectory(command[1]);
-        } else if (strcmp(command[0],"ls")==0){
+        } else if (strcmp(command[0], "ls") == 0) {
             printf("listing directories\n");
             listFiles();
         } else if (strcmp(command[0], "cp") == 0) {
@@ -297,7 +300,7 @@ void loop(uint64_t blockSize) {
             while (token != NULL) {
                 strcpy(copiedText, token);
                 length = strlen(copiedText);
-                if(length > BUFFSIZE) {
+                if (length > BUFFSIZE) {
                     printf("realloc\n");
                     copiedText = realloc(copiedText, BUFFSIZE);
                 }
@@ -310,11 +313,11 @@ void loop(uint64_t blockSize) {
             fd = fopen(command[1], "w");
             if (fd == NULL)
                 printf("null\n");
-            else{
+            else {
                 fd = fileIDCheck(command[1]); //
             }
             //make sure it isnt a dir
-            if (openFileList[fd].flags == 1){
+            if (openFileList[fd].flags == 1) {
                 printf("cannot write a directory\n");
                 continue;
             }
@@ -323,6 +326,40 @@ void loop(uint64_t blockSize) {
             printf("command: %s\n", command[1]);
             openFileList[fd].name = command[1];
             fsWrite(fd, copiedText, length);
+        } else if (strcmp(command[0], "cptofs") == 0) {
+            printf("copying file from virtual FS to real FS\n");
+            cptofs(command[1], ht_get(hashTable, command[1]));
+
+        } else if (strcmp(command[0], "cpfromfs") == 0) {
+            printf("copying file from real FS to virtual fs\n");
+            FILE *sourceFilePtr = fopen(command[1], "r");
+            int fd = fileIDCheck(command[1]);
+            printf("FD IS: &d\n", fd);
+            char *fileName;
+            char letter;
+            char *buffer = malloc(BUFFSIZE * sizeof(char));
+            int contentCounter = 0;
+            int buffCounter = 0;
+            while ((letter = fgetc(sourceFilePtr)) != EOF)    //while letter is not at the end of the file
+            {
+                buffer[contentCounter] = (char) letter; //copies letter into filecontents
+                //printf("%c", (char)fileContents[contentCounter]);
+                contentCounter++;             //increase content counter
+                buffCounter++;                 //increase buffer counter
+                if (buffCounter >= BUFFSIZE) //checks if array is full
+                {
+                    //printf("\n");
+                    //printf("need to realloc\n");
+                    buffer = realloc(buffer, BUFFSIZE); //realloc space
+                    buffCounter = 0;                                //reset buffer counter
+                    if (buffer == NULL)                        //not able to realloc space
+                        printf("could not realloc\n");
+                }
+            }
+            printf("File buffer: %s\n", buffer);
+
+
+            fsWrite(fd, buffer, sizeof(buffer));
         } else {
             printf("Command not found.\n");
         }
@@ -335,6 +372,15 @@ void loop(uint64_t blockSize) {
     return;
 }
 
+void cptofs(char *fileName, int fd) {
+    char *fileContents = fsRead(fd);
+    char currWD[BUFFER_LENGTH];
+    getcwd(currWD, sizeof(currWD));
+    printf("Current Working Directory: %s\n", currWD);
+    FILE *OutFile = fopen(fileName, "w");
+    fprintf(OutFile, "%s", fileContents);
+    printf("File written to: %s/%s\n", currWD, fileName);
+}
 
 /*  Function reads in data
  *
@@ -342,7 +388,7 @@ void loop(uint64_t blockSize) {
  *
  *  No return
  * */
-char* fsRead(int fileId) {
+char *fsRead(int fileId) {
     char *pBuf = malloc(currVCBPtr->blockSize * 2);
     printf("blockstart: %lu\n", openFileList[fileId].blockStart);
     printf("fileId: %d\n", fileId);
@@ -353,53 +399,7 @@ char* fsRead(int fileId) {
 }
 
 
-/*  Function writes content to disk //test function
- *
- *  Parameter: line-- content to be written
- *  blocksize -- blocksize
- *
- *  Returns if success or not?
- * */
-int fsWrite2(char *line, uint64_t blockSize) {
-    fsStructPtr pBuf = malloc(blockSize * 2);
-    char *textToWrite,  //text that is going to be written
-    *token, //for tokenizer
-    *copiedText = malloc(BUFFSIZE * sizeof(char));  //temporary copied text
-    int retVal; //return value
 
-    printf("in write function \n");
-    printf("line:%s\n", line);
-    token = strtok(line, "\""); //tokenizer
-    printf("got token\n");
-    while (token == NULL) { //empty case
-        printf(">");
-        fgets(line, BUFFER_LENGTH, stdin);      //gets line since old one was empty
-        token = strtok(line, " \n");
-    }
-    printf("tokenizing\n");
-    while (token != NULL) {
-        //printf("token:%s\n", token);
-        strcpy(copiedText, token);
-        token = strtok(NULL, "\"\n");
-    }
-    printf("Text that will be written is:%s\n", copiedText);
-    pBuf->counter = 103958; //counter?
-    pBuf->size = 85775875;  //size?
-
-    //bookmark 2
-//    textToWrite = (char *) pBuf;    //?
-//    textToWrite = textToWrite + 256;    //allocate space?
-    printf("before copy to text\n");
-    //strcpy(textToWrite, copiedText);    //copies string of text
-    printf("after copy to text\n");
-    //printf("the text is:%s\n",textToWrite);
-    strcpy(pBuf->name, copiedText); //copies text to buffer
-    //pBuf->name = textToWrite;   //
-    retVal = LBAwrite(pBuf, 2, 12);
-
-    free(copiedText);
-    return retVal;
-}
 
 /*  Function initializes the free map
  *
@@ -481,8 +481,7 @@ void freeMap(uint64_t volumeSize, uint64_t blockSize) {
  *  no return
  */
 
-void createDir(char *dirName, int fd)
-{
+void createDir(char *dirName, int fd) {
 //  file = 0 for flag and dir = 1 for flag
 //  make parent id the current working dir
     openFileList[fd].parentId = currentDir;
@@ -500,50 +499,48 @@ void createDir(char *dirName, int fd)
     openFileList[currentDir].numOfChildren++;
 }
 
-void changeDirectory(char* dirName){
+void changeDirectory(char *dirName) {
     printf("cd called\n");
     int tempCurDir = currentDir;
     //parse input
-    char* tokens[12];
-    char* token;
-    token = strtok(dirName,"/");
+    char *tokens[12];
+    char *token;
+    token = strtok(dirName, "/");
     tokens[0] = token;
-    int count=1;
-    while (token != NULL){
-        token = strtok(NULL,"/");
+    int count = 1;
+    while (token != NULL) {
+        token = strtok(NULL, "/");
         tokens[count] = token;
         count++;
     }
 
-    for (int i = 0;i < 12;i++){
+    for (int i = 0; i < 12; i++) {
 
-        char* step = tokens[i];
+        char *step = tokens[i];
         if (step == NULL)   //finished successfully
             break;
-        if (strcmp(step,"..")==0){
-            if (currentDir == 0){
+        if (strcmp(step, "..") == 0) {
+            if (currentDir == 0) {
                 printf("invalid path\n");
                 currentDir = tempCurDir;
                 return;
             } else
                 currentDir = openFileList[currentDir].parentId;
-        }
-        else { //step == a directory name
-            int fd = ht_get(hashTable,step);
+        } else { //step == a directory name
+            int fd = ht_get(hashTable, step);
 
-            if (fd == 0){//error, reset currentDir and return
+            if (fd == 0) {//error, reset currentDir and return
                 printf("invalid path\n");
-                currentDir=tempCurDir;
+                currentDir = tempCurDir;
                 return;
             }
-            for (int j = 0;j<AVGDIRECTORYENTRIES;j++){
-                if (fd == openFileList[currentDir].dirChildren[j]){
-                    currentDir=fd;
+            for (int j = 0; j < AVGDIRECTORYENTRIES; j++) {
+                if (fd == openFileList[currentDir].dirChildren[j]) {
+                    currentDir = fd;
                     break;//this should only break out of this nested j loop
-                }
-                else if (j == AVGDIRECTORYENTRIES-1){ //reached the end with no matches
+                } else if (j == AVGDIRECTORYENTRIES - 1) { //reached the end with no matches
                     printf("invalid path\n");
-                    currentDir=tempCurDir;
+                    currentDir = tempCurDir;
                     return;
                 }
             }
@@ -551,12 +548,11 @@ void changeDirectory(char* dirName){
     }
 }
 
-void listFiles(){
-    //todo need to make assign file names so we can print them out
-    for (int i =0;i<AVGDIRECTORYENTRIES;i++){
-        if (openFileList[currentDir].dirChildren[i] != 0){
+void listFiles() {
+    for (int i = 0; i < AVGDIRECTORYENTRIES; i++) {
+        if (openFileList[currentDir].dirChildren[i] != 0) {
             int fd = openFileList[currentDir].dirChildren[i];
-            printf("%s\n",openFileList[fd].name);
+            printf("%s\n", openFileList[fd].name);
         }
     }
 }
@@ -636,9 +632,6 @@ uint64_t getNewFileID() {
     return (retVal);
 }
 
-
-//todo: figure out myfsopen
-
 /*  This function opens a file
  *
  *  Parameters: fileName--name of file
@@ -652,8 +645,7 @@ int myFSOpen(char *fileName) {
     time_t seconds;
     seconds = time(NULL);
 
-    if(fd == 0)
-    {
+    if (fd == 0) {
         latestID++;
         printf("lastestID: %d\n", latestID);
         ht_set(hashTable, fileName, latestID);
@@ -666,7 +658,6 @@ int myFSOpen(char *fileName) {
     return (fd);
 }
 
-//todo: figure out myfsseek
 
 /*  This function is similar to seek function. moves file bytesFromStart position
  *
@@ -699,8 +690,7 @@ int myFSSeek(int fd, uint64_t position, int method) {
 }
 
 
-int copyFile(char *fileName, char *destination)
-{
+int copyFile(char *fileName, char *destination) {
     int sourceFile;
     int destinationFile;
     char *contents = malloc(sizeof(char) * currVCBPtr->blockSize);
@@ -709,14 +699,12 @@ int copyFile(char *fileName, char *destination)
 
 //  return 0 for success
     sourceFile = myFSOpen(fileName);
-    if(sourceFile == 0)
-    {
+    if (sourceFile == 0) {
         return 0;
     }
 
     destinationFile = myFSOpen(destination);
-    if (destinationFile == 0)
-    {
+    if (destinationFile == 0) {
         return 0;
     }
     printf("Before string copy");
@@ -733,25 +721,26 @@ int copyFile(char *fileName, char *destination)
     return 1;
 }
 
-void removeFile(char *filename)
-{
+void removeFile(char *filename) {
 //    todo: reallocate this memory for use in write functions
+    int fd = ht_get(hashTable, filename);
     ht_del(hashTable, filename);
+    openFileList[currentDir].dirChildren[openFileList[fd].childElementIndex] = 0; //index into current dir's children, where index number is the file to deletes index, and set to 0
+//    char *f;
+//    for (int i = 0; i < 512; i++) {//we are really doing this...sorry
+//        strcat(f, ".");
+//    }
+//    fsWrite(fd,f,sizeof(f));
     printf("Deleted %s\n", filename);
 }
 
-void addFile(int fd)
-{
-    if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
-    {
-        if(fd == 1)
-        {
+void addFile(int fd) {
+    if (openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0) {
+        if (fd == 1) {
 //            openFileList[fd] = openFileList[0];
             openFileList[fd].blockStart = 1;
             openFileList[fd].bytesFromStart = 512;
-        }
-        else
-        {
+        } else {
             openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
             openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
         }
@@ -764,9 +753,10 @@ void addFile(int fd)
     printf("current block location: %lu\n", currBlock);
     LBAwrite(temp, 1, currBlock);
     currVCBPtr->freeBlockLoc++;
-    openFileList[fd].parentId = (int *) currentDir;
+    openFileList[fd].parentId = currentDir;
     openFileList[fd].flags = 0;
-    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = (int *) fd;
+    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = fd;
+    openFileList[fd].childElementIndex = openFileList[currentDir].numOfChildren;
     openFileList[currentDir].numOfChildren++;
     openFileList[fd].isNewFile = 0;
 }
@@ -795,15 +785,11 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //        return -1;
 
     printf("after checks\n");
-    if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
-    {
-        if(fd == 1)
-        {
+    if (openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0) {
+        if (fd == 1) {
             openFileList[fd].blockStart = 1;
             openFileList[fd].bytesFromStart = 512;
-        }
-        else
-        {
+        } else {
             openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
             openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
         }
@@ -811,9 +797,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
     uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize,  //block num
 
-    currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
+    currOffset =
+    openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
-    printf("length: %lu|blocksize: %lu|currblock: %lu\n",length, currVCBPtr->blockSize, currBlock);
+    printf("length: %lu|blocksize: %lu|currblock: %lu\n", length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
         printf("first if\n");
@@ -830,12 +817,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
-        if (openFileList[fd].bytesFromStart % 512 != 0)
-        {
+        if (openFileList[fd].bytesFromStart % 512 != 0) {
             printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
-        } else
-        {
+        } else {
             currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 1;
         }
         openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
@@ -843,7 +828,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         printf("content: %s\n", openFileList[fd].fileBuffer);
         printf("currBlock: %lu\n", currBlock);
         printf("currOffset: %lu\n", currOffset);
-        LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + currOffset );
+        LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + currOffset);
 
         printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
@@ -853,8 +838,6 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         strcpy(openFileList[fd].fileBuffer, source);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
 
-        //writeblock = translateFileBlock(fd, currBlock); //translates file(if contiguous)
-        //todo: lbawrite.
         LBAwrite(openFileList[fd].fileBuffer, 2, currBlock + openFileList[fd].blockStart);
         memcpy(openFileList[fd].fileBuffer, openFileList[fd].fileBuffer + currVCBPtr->blockSize,
                currVCBPtr->blockSize); // copies content into buffer
@@ -866,12 +849,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
-        if (openFileList[fd].bytesFromStart != 0)
-        {
+        if (openFileList[fd].bytesFromStart != 0) {
             printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
-        } else
-        {
+        } else {
             currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 2;
         }
         openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
@@ -884,9 +865,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         printf("Content doesn't fit\n");
     }
 
-    if (openFileList[fd].isNewFile == 1){
+    if (openFileList[fd].isNewFile == 1) {
+        openFileList[fd].childElementIndex = openFileList[currentDir].numOfChildren;
+        openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = fd;
         openFileList[currentDir].numOfChildren++;
-        openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = (int *) fd;
         openFileList[fd].isNewFile = 0;
         openFileList[fd].parentId = currentDir;
     }
@@ -920,21 +902,21 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //      5. fscloes(dest)
 //      6. close(src)
 
-int fileIDCheck(char * filename)
-{
+int fileIDCheck(char *filename) {
     int tempCheck; //check if file exists
 
     tempCheck = ht_get(hashTable, filename); //checks if file exists
-    if(tempCheck == 0)  //file does not exist
+    if (tempCheck == 0)  //file does not exist
     {
         //todo:check file space
         latestID++; //increment dateModified
         ht_set(hashTable, filename, latestID);  //adds file to hashtable
-        tempCheck = ht_get(hashTable,filename); //gets hashed dateModified of file
+        tempCheck = ht_get(hashTable, filename); //gets hashed dateModified of file
         openFileList[tempCheck].isNewFile = 1;
+        openFileList[tempCheck].name = filename;
+        openFileList[tempCheck].flags = 0;
         return tempCheck;   //returns dateModified of file
-    }
-    else //file exists
+    } else //file exists
     {
         return tempCheck;       //return dateModified
     }
