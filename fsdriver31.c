@@ -95,6 +95,8 @@ int latestID = 0;     //counter for # of files/file dateModified's
 
 char* fsRead(int);
 
+void addFile(int);
+
 int copyFile(char *, char *);
 
 int fsWrite2(char *, uint64_t);
@@ -246,20 +248,7 @@ void loop(uint64_t blockSize) {
             printf("move\n");
         } else if (strcmp(command[0], "touch") == 0) {
             printf("add\n");
-//            addFile(command[1], command[2]);
-//            char *name = strtok(NULL, " ");
-//            char *sizec = strtok(NULL, " ");
-//            if (name == NULL || sizec == NULL)
-//            {
-//                printf("format: Name size in LBA\n");
-//            }
-//            else
-//            {
-//                uint64_t size = strtoull(sizec, NULL, 0);
-//                //addFile(name, size);
-//            }
-//            //  addFile(command[1], command[2]);
-
+            addFile(fileIDCheck(command[1]));
         } else if (strcmp(command[0], "rm") == 0) {
             printf("remove\n");
         } else if (strcmp(command[0], "read") == 0) {
@@ -637,6 +626,29 @@ int copyFile(char *fileName, char *destination)
     return 1;
 }
 
+void addFile(int fd)
+{
+    if(openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0)
+    {
+        if(fd == 1)
+        {
+            openFileList[fd] = openFileList[0];
+            openFileList[fd].bytesFromStart = 512;
+        }
+        else
+        {
+            openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
+            openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
+        }
+    }
+
+    uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;  //block num
+
+    char *temp = "";
+    printf("free block location: %lu\n", currVCBPtr->freeBlockLoc);
+    printf("current block location: %lu\n", currBlock);
+    LBAwrite(temp, 1, currBlock);
+}
 
 /*  This function writes content to the filesystem
  *
@@ -677,6 +689,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     }
 
     uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize,  //block num
+
     currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
     printf("length: %lu|blocksize: %lu|currblock: %lu\n",length, currVCBPtr->blockSize, currBlock);
