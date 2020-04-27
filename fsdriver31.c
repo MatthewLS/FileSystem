@@ -591,7 +591,6 @@ int myFSOpen(char *fileName) {
         fd = latestID;
     }
 //  Setting file name when file is created
-    openFileList[fd].fileName = fileName;
     openFileList[fd].dateCreated = seconds;
 
     return (fd);
