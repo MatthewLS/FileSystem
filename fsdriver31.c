@@ -49,14 +49,18 @@ typedef struct fsStruct {
             name[];
 } fsStruct, *fsStructPtr;
 
-typedef struct dirEntry {
+int currentDir = 0;
+
+typedef struct rootDir {
     uint64_t id,    //dateModified for ...
     date,       //date
     location,   //what block entry is in the disk(lba sart)
     sizeinBytes;    //file size. blocks needed = (sizeinBytes + (blocksize - 1)) / blocksize
     uint32_t flags;
+    int numOfChildren;
     char name[NAME_LENGTH]; //file name limited to 128 char
-} dirEntry, *dirEntryPtr;
+    int dirChildren[];
+} rootDir, *rootDirPtr;
 
 typedef struct OpenFileEntry {
     int flags;  //flags of file
@@ -66,7 +70,9 @@ typedef struct OpenFileEntry {
     dateCreated,//dateModified of file
     blockStart; //start block
     char *fileBuffer;   //file buffer(contents?)
-    char *fileName;
+    int *parentId;
+    int **dirChildren;
+    int numOfChildren;
 } openFileEntry, *openFileEntryPtr;
 
 openFileEntry *openFileList;   //array of currently open files
@@ -94,6 +100,8 @@ int latestID = 0;     //counter for # of files/file dateModified's
 
 
 char* fsRead(int);
+
+void createDir(char *, int);
 
 void addFile(int);
 
@@ -242,7 +250,8 @@ void loop(uint64_t blockSize) {
 
             printf("\n");
         } else if (strcmp(command[0], "mkdir") == 0) {
-            //mkdir(fsystem);
+            printf("making a directory");
+            createDir(command[1], fileIDCheck(command[1]));
         } else if (strcmp(command[0], "cp") == 0) {
             printf("copying\n");
             copyFile(command[1], command[2]);
@@ -455,9 +464,35 @@ void freeMap(uint64_t volumeSize, uint64_t blockSize) {
  *  no return
  */
 
+void createDir(char *dirname, int fd)
+{
+//  file = 0 for flag and dir = 1 for flag
+//  make parent id the current working dir
+    openFileList[fd].parentId = currentDir;
+
+    // only malloc when the dir has no children
+    if (openFileList[currentDir].numOfChildren == 0)
+        openFileList[currentDir].dirChildren = malloc(sizeof(int) * AVGDIRECTORYENTRIES);
+
+    //add the current fd to the current directory's children array
+    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = (int *) fd;
+
+    //flag this entry as a directory
+    openFileList[fd].flags = 1;
+    ht_set(hashTable, dirname, fd);
+
+    openFileList[fd].numOfChildren = 0;
+
+    openFileList[currentDir].numOfChildren++;
+}
+
 void initRootDir(uint64_t startLoc, uint64_t blockSize) {
-    dirEntryPtr rootDirBuffer;  //bytesFromStart to directory entry
-    uint64_t entrySize = sizeof(dirEntry), //size of entry itself
+    currentDir = 0;
+    rootDirPtr rootDirBuffer;  //bytesFromStart to directory entry
+    rootDirBuffer->numOfChildren = 0;
+    openFileList[currentDir].numOfChildren = 0;
+    openFileList[currentDir].flags = 1;
+    uint64_t entrySize = sizeof(rootDir), //size of entry itself
     bytesNeeded = AVGDIRECTORYENTRIES * entrySize, //initialize base bytes needed for directory of AVGDIRENTRY size
     blocksNeeded = (bytesNeeded + (blockSize - 1)) / blockSize, //base blocks ^
     actualDirEntries = (blocksNeeded + blockSize) / entrySize;  //actual size of directory
@@ -659,6 +694,9 @@ void addFile(int fd)
     printf("current block location: %lu\n", currBlock);
     LBAwrite(temp, 1, currBlock);
     currVCBPtr->freeBlockLoc++;
+    openFileList[fd].parentId = (int *) currentDir;
+    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = (int *) fd;
+    openFileList[currentDir].numOfChildren++;
 }
 
 /*  This function writes content to the filesystem
@@ -773,6 +811,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     } else {
         printf("Content doesn't fit\n");
     }
+    openFileList[fd].parentId = (int *) currentDir;
+    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = (int *) fd;
+    openFileList[currentDir].numOfChildren++;
+
 //  returning 0 for success
     return 0;
 }
