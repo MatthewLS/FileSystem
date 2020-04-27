@@ -70,9 +70,10 @@ typedef struct OpenFileEntry {
     dateCreated,//dateModified of file
     blockStart; //start block
     char *fileBuffer;   //file buffer(contents?)
-    int *parentId;
-    int **dirChildren;
+    int parentId;
+    int dirChildren[AVGDIRECTORYENTRIES];
     int numOfChildren;
+    char *name;
 } openFileEntry, *openFileEntryPtr;
 
 openFileEntry *openFileList;   //array of currently open files
@@ -102,6 +103,10 @@ int latestID = 0;     //counter for # of files/file dateModified's
 char* fsRead(int);
 
 void createDir(char *, int);
+
+void changeDirectory(char*);
+
+void listFiles();
 
 void addFile(int);
 
@@ -250,8 +255,12 @@ void loop(uint64_t blockSize) {
 
             printf("\n");
         } else if (strcmp(command[0], "mkdir") == 0) {
-            printf("making a directory");
+            printf("making a directory\n");
             createDir(command[1], fileIDCheck(command[1]));
+        } else if (strcmp(command[0],"cd")==0){
+            changeDirectory(command[1]);
+        } else if (strcmp(command[0],"ls")==0){
+            listFiles()
         } else if (strcmp(command[0], "cp") == 0) {
             printf("copying\n");
             copyFile(command[1], command[2]);
@@ -464,26 +473,83 @@ void freeMap(uint64_t volumeSize, uint64_t blockSize) {
  *  no return
  */
 
-void createDir(char *dirname, int fd)
+void createDir(char *dirName, int fd)
 {
 //  file = 0 for flag and dir = 1 for flag
 //  make parent id the current working dir
     openFileList[fd].parentId = currentDir;
 
-    // only malloc when the dir has no children
-    if (openFileList[currentDir].numOfChildren == 0)
-        openFileList[currentDir].dirChildren = malloc(sizeof(int) * AVGDIRECTORYENTRIES);
-
     //add the current fd to the current directory's children array
-    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = (int *) fd;
+    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = fd;
 
     //flag this entry as a directory
     openFileList[fd].flags = 1;
-    ht_set(hashTable, dirname, fd);
+    ht_set(hashTable, dirName, fd);
 
     openFileList[fd].numOfChildren = 0;
 
     openFileList[currentDir].numOfChildren++;
+}
+
+void changeDirectory(char* dirName){
+    printf("cd called\n");
+    int tempCurDir = currentDir;
+    //parse input
+    char* tokens[12];
+    char* token;
+    token = strtok(dirName,"/");
+    tokens[0] = token;
+    int count=1;
+    while (token != NULL){
+        token = strtok(NULL,"/");
+        tokens[count] = token;
+        count++;
+    }
+
+    for (int i = 0;i < 12;i++){
+
+        char* step = tokens[i];
+        if (step == NULL)   //finished successfully
+            break;
+        if (strcmp(step,"..")==0){
+            if (currentDir == 0){
+                printf("invalid path\n");
+                currentDir = tempCurDir;
+                return;
+            } else
+                currentDir = openFileList[currentDir].parentId;
+        }
+        else { //step == a directory name
+            int fd = ht_get(hashTable,step);
+
+            if (fd == 0){//error, reset currentDir and return
+                printf("invalid path\n");
+                currentDir=tempCurDir;
+                return;
+            }
+            for (int j = 0;j<AVGDIRECTORYENTRIES;j++){
+                if (fd == openFileList[currentDir].dirChildren[j]){
+                    currentDir=fd;
+                    break;//this should only break out of this nested j loop
+                }
+                else if (j == AVGDIRECTORYENTRIES-1){ //reached the end with no matches
+                    printf("invalid path\n");
+                    currentDir=tempCurDir;
+                    return;
+                }
+            }
+        }
+    }
+}
+
+void listFiles(){
+    //todo need to make assign file names so we can print them out
+    for (int i =0;i<AVGDIRECTORYENTRIES;i++){
+        if (openFileList[currentDir].dirChildren[i] != 0){
+            int fd = openFileList[currentDir].dirChildren[i];
+            printf("%s",openFileList[fd].name);
+        }
+    }
 }
 
 void initRootDir(uint64_t startLoc, uint64_t blockSize) {
