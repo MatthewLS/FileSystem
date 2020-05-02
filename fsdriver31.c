@@ -501,6 +501,10 @@ void changeDirectory(char *dirName) {
     char *tokens[12];
     char *token;
     token = strtok(dirName, "/");
+    if (strcmp(token,"~")==0) {
+        currentDir = 0;
+        return;
+    }
     tokens[0] = token;
     int count = 1;
     while (token != NULL) {
