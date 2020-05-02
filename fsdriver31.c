@@ -107,6 +107,8 @@ void listFiles();
 
 void addFile(int);
 
+void moveFile(char*,char*);
+
 void removeFile(char *);
 
 void cptofs(char *, int);
@@ -190,7 +192,12 @@ void loop(uint64_t blockSize) {
 
 
     while (stat) {
-        printf("enter command");
+        if (currentDir == 0){
+            printf(" ~");
+        } else {
+            printf(" %s",openFileList[currentDir].name);
+        }
+
         command = malloc(BUFFSIZE * sizeof(char));
         if (command == NULL)
             printf("could not allocate space\n");
@@ -203,7 +210,6 @@ void loop(uint64_t blockSize) {
 
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
-        printf("line: %s\n", line);
         if ((sizeof(line) / sizeof(char) + 1) > BUFFER_LENGTH) {
             printf("over256\n");
             line = realloc(line, BUFFER_LENGTH * 3);
@@ -217,21 +223,17 @@ void loop(uint64_t blockSize) {
         strcpy(tempLine, line);
 
         token = strtok(line, " \n");
-        printf("got token\n");
         while (token == NULL) {
             printf(">");
             fgets(line, BUFFER_LENGTH, stdin);      //gets line since old one was empty
             token = strtok(line, " \n");
         }
-        printf("tokenizing\n");
         while (token != NULL) {
             strcpy(command[counter], token);
             printf("command:%s:%i\n", command[counter], counter);
             token = strtok(NULL, " \n\t");
             counter++;
         }
-//        command[counter] = '\0';
-        printf("checking command\n");
         if (strcmp(command[0], "Q") == 0 || strcmp(command[0], "q") == 0) {
             printf("Exiting\n");
             stat = 0;
@@ -254,18 +256,17 @@ void loop(uint64_t blockSize) {
 
             printf("\n");
         } else if (strcmp(command[0], "mkdir") == 0) {
-            printf("making a directory\n");
             createDir(command[1], fileIDCheck(command[1]));
         } else if (strcmp(command[0], "cd") == 0) {
             changeDirectory(command[1]);
         } else if (strcmp(command[0], "ls") == 0) {
-            printf("listing directories\n");
             listFiles();
         } else if (strcmp(command[0], "cp") == 0) {
             printf("copying\n");
             copyFile(command[1], command[2]);
         } else if (strcmp(command[0], "move") == 0) {
             printf("move\n");
+            moveFile(command[1],command[2]);
         } else if (strcmp(command[0], "touch") == 0) {
             printf("add\n");
             int fd = fileIDCheck(command[1]);
@@ -495,16 +496,11 @@ void createDir(char *dirName, int fd) {
 }
 
 void changeDirectory(char *dirName) {
-    printf("cd called\n");
     int tempCurDir = currentDir;
     //parse input
     char *tokens[12];
     char *token;
     token = strtok(dirName, "/");
-    if (strcmp(token,"~")==0) {
-        currentDir = 0;
-        return;
-    }
     tokens[0] = token;
     int count = 1;
     while (token != NULL) {
@@ -518,6 +514,10 @@ void changeDirectory(char *dirName) {
         char *step = tokens[i];
         if (step == NULL)   //finished successfully
             break;
+        if (strcmp(step,"~")==0){
+            currentDir=0;
+            continue;
+        }
         if (strcmp(step, "..") == 0) {
             if (currentDir == 0) {
                 printf("invalid path\n");
@@ -548,10 +548,95 @@ void changeDirectory(char *dirName) {
 }
 
 void listFiles() {
+    printf("\n");
     for (int i = 0; i < AVGDIRECTORYENTRIES; i++) {
         if (openFileList[currentDir].dirChildren[i] != 0) {
             int fd = openFileList[currentDir].dirChildren[i];
             printf("%s\n", openFileList[fd].name);
+        }
+    }
+}
+
+void moveFile(char* fileName,char* path){
+    //moving targetDir to become directory at end of specified path
+    //fileName's fd is toMovefd
+
+    //make sure file is in current directory
+    int toMovefd = ht_get(hashTable,fileName);
+    if (toMovefd == 0){
+        printf("file not in directory. Try again \n");
+        return;
+    }
+    //make sure file is in current directory
+    for (int i = 0; i < AVGDIRECTORYENTRIES;i++){
+        if (openFileList[currentDir].dirChildren[i] == toMovefd){
+            break; //leave loop to continue function
+        } else if (i == AVGDIRECTORYENTRIES-1){ //if we reach the end and havent found a match, specified file isnt in directory
+            printf("file is not in directory. Try again\n");
+            return;
+        }
+    }
+    if (openFileList[toMovefd].flags){ //if we want to remove functionality for moving Directories, this is where we do it
+        printf("moving Dir\n");
+        //return;
+    }
+
+    //parse input
+    char *tokens[12];
+    char *token;
+    token = strtok(path, "/");
+    tokens[0] = token;
+    int count = 1;
+    while (token != NULL) {
+        token = strtok(NULL, "/");
+        tokens[count] = token;
+        count++;
+    }
+
+    int targetDir = currentDir;
+
+    //find specified directory
+    for (int i = 0;i<12;i++){
+        char *step = tokens[i];
+        if (step == NULL) {   //found target directory without error
+            openFileList[targetDir].dirChildren[openFileList[targetDir].numOfChildren] = toMovefd; //append toMovefd to target directory's dirchildren list
+            openFileList[targetDir].numOfChildren++;
+            //remove toMovefd from its parent dirChildren list
+            for (int j = 0; j < AVGDIRECTORYENTRIES;j++){
+                if (openFileList[currentDir].dirChildren[j] == toMovefd){//looking through our files parent directory children list
+                    openFileList[currentDir].dirChildren[j] = 0; //remove that entry
+                    return;
+                }
+            }
+        }
+        if (strcmp(step,"~")==0){
+            targetDir=0;
+            continue;
+        }
+        if (strcmp(step, "..") == 0) {
+            if (targetDir == 0) {
+                printf("invalid path\n");
+                return;
+            } else {
+                targetDir = openFileList[targetDir].parentId;
+            }
+        }
+        else { //step == a directory name
+            int tempfd = ht_get(hashTable, step);
+
+            if (tempfd == 0) {//error, reset currentDir and return
+                printf("invalid path\n");
+                return;
+            }
+            for (int j = 0; j < AVGDIRECTORYENTRIES; j++) {
+                if (tempfd == openFileList[targetDir].dirChildren[j]) {
+                    targetDir = tempfd;
+                    break;//this should only break out of this nested j loop
+                } else if (j == AVGDIRECTORYENTRIES - 1) { //reached the end with no matches
+                    printf("invalid path\n");
+                    return;
+                }
+            }
         }
     }
 }
