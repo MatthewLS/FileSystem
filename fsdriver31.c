@@ -162,10 +162,13 @@ int main(int argc, char *argv[]) {
     printf("Opened %s, Volume Size: %lu; BlockSize: %lu\n", fileName, volumeSize, blockSize);
 
 //    freeMap(volumeSize, blockSize); look at this later
-
+    printf("before init\n");
     initRootDir(6, blockSize);
+    printf("after init\n");
     hashTable = ht_create();
+    printf("after hash\n");
     loop(blockSize);
+    printf("after loop\n");
     printf("out of loop. About to close partition\n");
     closePartitionSystem();
     printf("partition closed.\n");
@@ -643,10 +646,12 @@ void moveFile(char* fileName,char* path){
 
 void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     currentDir = 0;
-    rootDirPtr rootDirBuffer;  //bytesFromStart to directory entry
-    rootDirBuffer->numOfChildren = 0;
+  //  rootDirPtr rootDirBuffer;  //bytesFromStart to directory entry
+   // rootDirBuffer->numOfChildren = 0;
+    printf("we are here\n");
     openFileList[currentDir].numOfChildren = 0;
     openFileList[currentDir].flags = 1;
+
     uint64_t entrySize = sizeof(rootDir), //size of entry itself
     bytesNeeded = AVGDIRECTORYENTRIES * entrySize, //initialize base bytes needed for directory of AVGDIRENTRY size
     blocksNeeded = (bytesNeeded + (blockSize - 1)) / blockSize, //base blocks ^
@@ -658,36 +663,34 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     //need to know if fs has space?
     startLoc = getFreeSpace(actualDirEntries, CONTIGUOUS);
 
-    rootDirBuffer = malloc(blocksNeeded * blockSize); //init size of root dir buffer
-
-    //loop to initialize actual dir entries
-    for (int i = 0; i < actualDirEntries; i++) {
-        rootDirBuffer[i].id = 0;
-        rootDirBuffer[i].flags = DIR_UNUSED;
-        strcpy(rootDirBuffer[i].name, "");
-        rootDirBuffer[i].date = 0;
-        rootDirBuffer[i].location = 0;
-        rootDirBuffer[i].sizeinBytes = 0;
-    }
-
-    //needs bytesFromStart of root's parent now
-    rootDirBuffer[0].id = 1000; //random location
-    rootDirBuffer[0].flags = 0; //0 for directory
-    strcpy(rootDirBuffer[0].name, "root");    //roots name
-    rootDirBuffer[0].date = 1234;   //random date
-    rootDirBuffer[0].location = startLoc;   //start location of root
-    rootDirBuffer[0].sizeinBytes = actualDirEntries * entrySize; //size in bytes
-
-    //write buffer to disk
-    LBAwrite(rootDirBuffer, blocksNeeded, startLoc);
-
+//    rootDirBuffer = malloc(blocksNeeded * blockSize); //init size of root dir buffer
+//
+//    //loop to initialize actual dir entries
+//    for (int i = 0; i < actualDirEntries; i++) {
+//        rootDirBuffer[i].id = 0;
+//        rootDirBuffer[i].flags = DIR_UNUSED;
+//        strcpy(rootDirBuffer[i].name, "");
+//        rootDirBuffer[i].date = 0;
+//        rootDirBuffer[i].location = 0;
+//        rootDirBuffer[i].sizeinBytes = 0;
+//    }
+//
+//    //needs bytesFromStart of root's parent now
+//    rootDirBuffer[0].id = 1000; //random location
+//    rootDirBuffer[0].flags = 0; //0 for directory
+//    strcpy(rootDirBuffer[0].name, "root");    //roots name
+//    rootDirBuffer[0].date = 1234;   //random date
+//    rootDirBuffer[0].location = startLoc;   //start location of root
+//    rootDirBuffer[0].sizeinBytes = actualDirEntries * entrySize; //size in bytes
+//
     openFileList[0].dateModified = 0;
     openFileList[0].flags = 1;
     openFileList[0].size = 0;
     openFileList[0].blockStart = currVCBPtr->freeBlockLoc;
     openFileList[0].bytesFromStart = 0;
 
-    //bookmark
+    //write buffer to disk
+    LBAwrite(openFileList, blocksNeeded, startLoc);
 }
 
 // TODO: getfreespace function
