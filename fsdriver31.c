@@ -162,14 +162,14 @@ int main(int argc, char *argv[]) {
     printf("Opened %s, Volume Size: %lu; BlockSize: %lu\n", fileName, volumeSize, blockSize);
 
 //    freeMap(volumeSize, blockSize); look at this later
-    printf("before init\n");
+    //printf("before init\n");
     initRootDir(6, blockSize);
-    printf("after init\n");
+    //printf("after init\n");
     hashTable = ht_create();
-    printf("after hash\n");
+    //("after hash\n");
     loop(blockSize);
-    printf("after loop\n");
-    printf("out of loop. About to close partition\n");
+    //printf("after loop\n");
+    //printf("out of loop. About to close partition\n");
     closePartitionSystem();
     printf("partition closed.\n");
     return EXIT_SUCCESS;
@@ -286,8 +286,8 @@ void loop(uint64_t blockSize) {
             printf("write\n");
 
             char *copiedText = malloc(BUFFSIZE * sizeof(char));  //temporary copied text
-            printf("in write function \n");
-            printf("line:%s\n", tempLine);
+            //printf("in write function \n");
+            //printf("line:%s\n", tempLine);
             token = strtok(tempLine, "\""); //tokenizer
             while (token == NULL) { //empty case
                 printf(">");
@@ -300,14 +300,14 @@ void loop(uint64_t blockSize) {
                 strcpy(copiedText, token);
                 length = strlen(copiedText);
                 if (length > BUFFSIZE) {
-                    printf("realloc\n");
+//                    printf("realloc\n");
                     copiedText = realloc(copiedText, BUFFSIZE);
                 }
                 token = strtok(NULL, "\"\n");
             }
             printf("Text that will be written is:%s\n", copiedText);
             //int length = sizeof(copiedText) / (sizeof(char) + 1);
-            printf("Length: %i\n", length);
+//            printf("Length: %i\n", length);
             int fd;
             fd = fopen(command[1], "w");
             if (fd == NULL)
@@ -322,7 +322,7 @@ void loop(uint64_t blockSize) {
             }
 
 
-            printf("command: %s\n", command[1]);
+//            printf("command: %s\n", command[1]);
             openFileList[fd].name = command[1];
             fsWrite(fd, copiedText, length);
         } else if (strcmp(command[0], "cptofs") == 0) {
@@ -333,7 +333,7 @@ void loop(uint64_t blockSize) {
             printf("copying file from real FS to virtual fs\n");
             FILE *sourceFilePtr = fopen(command[1], "r");
             int fd = fileIDCheck(command[1]);
-            printf("FD IS: &d\n", fd);
+//            printf("FD IS: &d\n", fd);
             char *fileName;
             char letter;
             char *buffer = malloc(BUFFSIZE * sizeof(char));
@@ -355,7 +355,7 @@ void loop(uint64_t blockSize) {
                         printf("could not realloc\n");
                 }
             }
-            printf("File buffer: %s\n", buffer);
+//            printf("File buffer: %s\n", buffer);
 
 
             fsWrite(fd, buffer, sizeof(buffer));
@@ -389,8 +389,8 @@ void cptofs(char *fileName, int fd) {
  * */
 char *fsRead(int fileId) {
     char *pBuf = malloc(currVCBPtr->blockSize * 2);
-    printf("blockstart: %lu\n", openFileList[fileId].blockStart);
-    printf("fileId: %d\n", fileId);
+//    printf("blockstart: %lu\n", openFileList[fileId].blockStart);
+//    printf("fileId: %d\n", fileId);
     int retVal = LBAread(pBuf, 1, openFileList[fileId].blockStart);
 
     printf("text:%s\n", pBuf);
@@ -648,7 +648,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     currentDir = 0;
   //  rootDirPtr rootDirBuffer;  //bytesFromStart to directory entry
    // rootDirBuffer->numOfChildren = 0;
-    printf("we are here\n");
+//    printf("we are here\n");
     openFileList[currentDir].numOfChildren = 0;
     openFileList[currentDir].flags = 1;
 
@@ -734,7 +734,7 @@ int myFSOpen(char *fileName) {
 
     if (fd == 0) {
         latestID++;
-        printf("lastestID: %d\n", latestID);
+//        printf("lastestID: %d\n", latestID);
         ht_set(hashTable, fileName, latestID);
         fd = latestID;
         openFileList[fd].isNewFile = 1;
@@ -794,13 +794,13 @@ int copyFile(char *fileName, char *destination) {
     if (destinationFile == 0) {
         return 0;
     }
-    printf("Before string copy");
+//    printf("Before string copy");
 
     strcpy(contents, fsRead(sourceFile));
-    printf("After string copy");
+//    printf("After string copy");
 
     unsigned long length = strlen(contents);
-    printf("contents: %s\n", contents);
+//    printf("contents: %s\n", contents);
 
     fsWrite(destinationFile, contents, length);
     printf("File written\n");
@@ -836,8 +836,8 @@ void addFile(int fd) {
     uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;  //block num
 
     char *temp = "";
-    printf("free block location: %lu\n", currVCBPtr->freeBlockLoc);
-    printf("current block location: %lu\n", currBlock);
+//    printf("free block location: %lu\n", currVCBPtr->freeBlockLoc);
+//    printf("current block location: %lu\n", currBlock);
     LBAwrite(temp, 1, currBlock);
     currVCBPtr->freeBlockLoc++;
     openFileList[fd].parentId = currentDir;
@@ -863,15 +863,15 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     time_t seconds;
     seconds = time(NULL);
 
-    printf("In fs write\n");
-    printf("fd: %i\n", fd);
+//    printf("In fs write\n");
+//    printf("fd: %i\n", fd);
     //checks if fd is in use
 //    if(fd >= FDOPENMAX)
 //        return -1;
 //    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
 //        return -1;
 
-    printf("after checks\n");
+//    printf("after checks\n");
     if (openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0) {
         if (fd == 1) {
             openFileList[fd].blockStart = 1;
@@ -887,25 +887,25 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     currOffset =
     openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
-    printf("length: %lu|blocksize: %lu|currblock: %lu\n", length, currVCBPtr->blockSize, currBlock);
+//    printf("length: %lu|blocksize: %lu|currblock: %lu\n", length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
-        printf("first if\n");
+//        printf("first if\n");
 
         openFileList[fd].fileBuffer = source;
-        printf("File content: %s\n", openFileList[fd].fileBuffer);
-        printf("current offset %lu\n", currOffset);
+        //printf("File content: %s\n", openFileList[fd].fileBuffer);
+//        printf("current offset %lu\n", currOffset);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
-        printf("File content: %s\n", openFileList[fd].fileBuffer);
+//        printf("File content: %s\n", openFileList[fd].fileBuffer);
         openFileList[fd].dateModified = seconds;
         openFileList[fd].flags = 0;
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
-        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
+//        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
         if (openFileList[fd].bytesFromStart % 512 != 0) {
-            printf("Editing file\n");
+//            printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
         } else {
             currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 1;
@@ -913,15 +913,15 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
 
         printf("content: %s\n", openFileList[fd].fileBuffer);
-        printf("currBlock: %lu\n", currBlock);
-        printf("currOffset: %lu\n", currOffset);
+//        printf("currBlock: %lu\n", currBlock);
+//        printf("currOffset: %lu\n", currOffset);
         LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + currOffset);
 
-        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
+//        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
     } else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
     {
-        printf("second statement\n");
+//        printf("second statement\n");
         strcpy(openFileList[fd].fileBuffer, source);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
 
@@ -934,10 +934,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
-        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
+//        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
         if (openFileList[fd].bytesFromStart != 0) {
-            printf("Editing file\n");
+//            printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
         } else {
             currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 2;
@@ -946,7 +946,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
         LBAwrite(openFileList[fd].fileBuffer, 2, currBlock + openFileList[fd].blockStart);
 
-        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
+//        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
     } else {
         printf("Content doesn't fit\n");
