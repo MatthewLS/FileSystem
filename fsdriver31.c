@@ -738,6 +738,7 @@ int myFSOpen(char *fileName) {
         ht_set(hashTable, fileName, latestID);
         fd = latestID;
         openFileList[fd].isNewFile = 1;
+        openFileList[fd].name = fileName;
     }
 //  Setting file name when file is created
     openFileList[fd].dateCreated = seconds;
