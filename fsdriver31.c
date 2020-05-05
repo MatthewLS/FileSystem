@@ -148,11 +148,7 @@ int main(int argc, char *argv[]) {
     currVCBPtr->blockSize = 512;
     openFileList = malloc(sizeof(openFileList) * 256);
 
-    if (argc > 3) {
-        fileName = argv[1];
-        volumeSize = atoll(argv[2]);
-        blockSize = atoll(argv[3]);
-    }
+    fileName = argv[1];
 //    volumeSize = 10000000;
 //    blockSize = 512;
 //    strcpy(fileName, "newfs");
