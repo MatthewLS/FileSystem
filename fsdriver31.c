@@ -245,8 +245,9 @@ void loop(uint64_t blockSize) {
 //          Need to open file for cp, move, read, and write
             printf("touch - make a file\n");
             printf("move - move a file\n");
-            printf("read - reads from a file ");
-            printf("write - writes to a file");
+            printf("read - reads from a file\n");
+            printf("write - writes to a file\n");
+            printf("ls - lists all directory children\n");
 
             printf("rm - remove a file/directory\n");
             printf("cp - copy a file/directory from one path to other\n");
