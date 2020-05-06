@@ -229,7 +229,7 @@ void loop(uint64_t blockSize) {
         }
         while (token != NULL) {
             strcpy(command[counter], token);
-            printf("command:%s:%i\n", command[counter], counter);
+//            printf("command:%s:%i\n", command[counter], counter);
             token = strtok(NULL, " \n\t");
             counter++;
         }
@@ -262,25 +262,19 @@ void loop(uint64_t blockSize) {
         } else if (strcmp(command[0], "ls") == 0) {
             listFiles();
         } else if (strcmp(command[0], "cp") == 0) {
-            printf("copying\n");
             copyFile(command[1], command[2]);
         } else if (strcmp(command[0], "move") == 0) {
-            printf("move\n");
             moveFile(command[1],command[2]);
         } else if (strcmp(command[0], "touch") == 0) {
-            printf("add\n");
             int fd = fileIDCheck(command[1]);
             openFileList[fd].name = command[1];
             addFile(fd);
         } else if (strcmp(command[0], "rm") == 0) {
-            printf("remove\n");
             removeFile(command[1]);
         } else if (strcmp(command[0], "read") == 0) {
-            printf("read\n");
             fsRead(fileIDCheck(command[1]));
 
         } else if (strcmp(command[0], "write") == 0) {
-            printf("write\n");
 
             char *copiedText = malloc(BUFFSIZE * sizeof(char));  //temporary copied text
             //printf("in write function \n");
@@ -302,7 +296,6 @@ void loop(uint64_t blockSize) {
                 }
                 token = strtok(NULL, "\"\n");
             }
-            printf("Text that will be written is:%s\n", copiedText);
             //int length = sizeof(copiedText) / (sizeof(char) + 1);
 //            printf("Length: %i\n", length);
             int fd;
@@ -318,8 +311,6 @@ void loop(uint64_t blockSize) {
                 continue;
             }
 
-
-//            printf("command: %s\n", command[1]);
             openFileList[fd].name = command[1];
             fsWrite(fd, copiedText, length);
         } else if (strcmp(command[0], "cptofs") == 0) {
@@ -888,11 +879,8 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //    printf("length: %lu|blocksize: %lu|currblock: %lu\n", length, currVCBPtr->blockSize, currBlock);
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
-//        printf("first if\n");
 
         openFileList[fd].fileBuffer = source;
-        //printf("File content: %s\n", openFileList[fd].fileBuffer);
-//        printf("current offset %lu\n", currOffset);
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
 //        printf("File content: %s\n", openFileList[fd].fileBuffer);
         openFileList[fd].dateModified = seconds;
@@ -910,7 +898,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         }
         openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
 
-        printf("content: %s\n", openFileList[fd].fileBuffer);
+
 //        printf("currBlock: %lu\n", currBlock);
 //        printf("currOffset: %lu\n", currOffset);
         LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + currOffset);
