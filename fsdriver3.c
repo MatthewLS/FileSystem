@@ -856,15 +856,6 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     time_t seconds;
     seconds = time(NULL);
 
-//    printf("In fs write\n");
-//    printf("fd: %i\n", fd);
-    //checks if fd is in use
-//    if(fd >= FDOPENMAX)
-//        return -1;
-//    if((openFileList[fd].flags && FDOPENINUSE) != FDOPENINUSE)
-//        return -1;
-
-//    printf("after checks\n");
     if (openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0) {
         if (fd == 1) {
             openFileList[fd].blockStart = 1;
@@ -880,22 +871,18 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     currOffset =
     openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
-//    printf("length: %lu|blocksize: %lu|currblock: %lu\n", length, currVCBPtr->blockSize, currBlock);
+
     if (length + currOffset < currVCBPtr->blockSize) //content fits into block
     {
-
         openFileList[fd].fileBuffer = source;
         memcpy(openFileList[fd].fileBuffer + currOffset, source, length);   //copies content into block
-//        printf("File content: %s\n", openFileList[fd].fileBuffer);
         openFileList[fd].dateModified = seconds;
         openFileList[fd].flags = 0;
         openFileList[fd].size = length;
         openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
 
-//        printf("freeblockloc before: %llu\n", currVCBPtr->freeBlockLoc);
         currBlock = currVCBPtr->freeBlockLoc;
         if (openFileList[fd].bytesFromStart % 512 != 0) {
-//            printf("Editing file\n");
             currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;
         } else {
             currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + 1;
@@ -903,13 +890,10 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
 
 
-//        printf("currBlock: %lu\n", currBlock);
-//        printf("currOffset: %lu\n", currOffset);
         LBAwrite(openFileList[fd].fileBuffer, 1, currBlock + currOffset);
 
-//        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
-
-    } else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
+    }
+    else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
     {
 //        printf("second statement\n");
         strcpy(openFileList[fd].fileBuffer, source);
@@ -938,7 +922,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 
 //        printf("freeblockloc: %llu\n", currVCBPtr->freeBlockLoc);
 
-    } else {
+    }else {
         printf("Content doesn't fit\n");
     }
 
