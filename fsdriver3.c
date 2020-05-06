@@ -149,8 +149,8 @@ int main(int argc, char *argv[]) {
     openFileList = malloc(sizeof(openFileList) * 256);
 
     fileName = argv[1];
-//    volumeSize = 10000000;
-//    blockSize = 512;
+    volumeSize = 10000000;
+    blockSize = 512;
 //    strcpy(fileName, "newfs");
     retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
 //    retVal = startPartitionSystem(fileName, &volumeSize, &blockSize);
@@ -644,37 +644,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     openFileList[currentDir].numOfChildren = 0;
     openFileList[currentDir].flags = 1;
 
-    uint64_t entrySize = sizeof(rootDir), //size of entry itself
-    bytesNeeded = AVGDIRECTORYENTRIES * entrySize, //initialize base bytes needed for directory of AVGDIRENTRY size
-    blocksNeeded = (bytesNeeded + (blockSize - 1)) / blockSize, //base blocks ^
-    actualDirEntries = (blocksNeeded + blockSize) / entrySize;  //actual size of directory
-
-    printf("For %d entries we need %lui bytes\n", AVGDIRECTORYENTRIES, bytesNeeded);
-    printf("Actual dir entries = %lui\n", actualDirEntries);
-
-    //need to know if fs has space?
-    startLoc = getFreeSpace(actualDirEntries, CONTIGUOUS);
-
-//    rootDirBuffer = malloc(blocksNeeded * blockSize); //init size of root dir buffer
-//
-//    //loop to initialize actual dir entries
-//    for (int i = 0; i < actualDirEntries; i++) {
-//        rootDirBuffer[i].id = 0;
-//        rootDirBuffer[i].flags = DIR_UNUSED;
-//        strcpy(rootDirBuffer[i].name, "");
-//        rootDirBuffer[i].date = 0;
-//        rootDirBuffer[i].location = 0;
-//        rootDirBuffer[i].sizeinBytes = 0;
-//    }
-//
-//    //needs bytesFromStart of root's parent now
-//    rootDirBuffer[0].id = 1000; //random location
-//    rootDirBuffer[0].flags = 0; //0 for directory
-//    strcpy(rootDirBuffer[0].name, "root");    //roots name
-//    rootDirBuffer[0].date = 1234;   //random date
-//    rootDirBuffer[0].location = startLoc;   //start location of root
-//    rootDirBuffer[0].sizeinBytes = actualDirEntries * entrySize; //size in bytes
-//
+    openFileList[0].fileBuffer = "bierman is God";
     openFileList[0].dateModified = 0;
     openFileList[0].flags = 1;
     openFileList[0].size = 0;
@@ -682,7 +652,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     openFileList[0].bytesFromStart = 0;
 
     //write buffer to disk
-    LBAwrite(openFileList, blocksNeeded, startLoc);
+    LBAwrite(openFileList[0].fileBuffer, 1, startLoc);
 }
 
 // TODO: getfreespace function
