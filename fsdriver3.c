@@ -834,52 +834,59 @@ void addFile(int fd) {
  * */
 uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //todo: write open file list and currvcbptr to disk so that when we reopen the filesystem we can pick up where we left off
-    int freeBlockSpace = currVCBPtr->blockSize - (openFileList[fd].bytesFromStart % currVCBPtr->blockSize);
+    int freeBlockSpace = currVCBPtr->blockSize - (openFileList[fd].bytesFromStart % 512);
 
 
     time_t seconds;
     seconds = time(NULL);
 
-    if (openFileList[fd].blockStart == NULL || openFileList[fd].blockStart == 0) {
+    if (openFileList[fd].isNewFile || openFileList[fd].blockStart == 0) {
         if (fd == 1) {
+            openFileList[fd].usedBlocks[0] = 1;
+            openFileList[fd].numBlocksUsed++;
             openFileList[fd].blockStart = 1;
             openFileList[fd].bytesFromStart = 512;
         } else {
             openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
             openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
+            openFileList[fd].usedBlocks[0] = currVCBPtr->freeBlockLoc;
+            openFileList[fd].numBlocksUsed++;
         }
     }
 
-    uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize,  //block num
-    currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
+//    uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;  //block num
+    uint64_t currBlock = openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed-1];  //block num
+    uint64_t currOffset = openFileList[fd].bytesFromStart % currVCBPtr->blockSize;  //remainder(where you are in the current block)
 
     if (length > freeBlockSpace){
-
+        printf("length>freeblockspace\n");
+        currBlock = currVCBPtr->freeBlockLoc;
+        openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed] = currBlock;
+        openFileList[fd].numBlocksUsed++;
     }
 
 
-
+    //numblocks == how many blocks we want to write
     int numBlocks = (length / 512);
     if (length % 512 != 0)
         numBlocks++;
 
     printf("entering write2\n");
-    if (openFileList[fd].fileBuffer == NULL)
-        openFileList[fd].fileBuffer = source;
-    memcpy(openFileList[fd].fileBuffer + currOffset, source, length); //copies source into filebuffer at offset
+//    if (openFileList[fd].fileBuffer == NULL)
+//        openFileList[fd].fileBuffer = source;
+//    memcpy(openFileList[fd].fileBuffer + currOffset, source, length); //copies source into filebuffer at offset
     openFileList[fd].dateModified = seconds;
     openFileList[fd].flags = 0;
     openFileList[fd].size = length;
     openFileList[fd].blockStart = currVCBPtr->freeBlockLoc;
     printf("entering write3\n");
-    currBlock = currVCBPtr->freeBlockLoc;
 
     currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + numBlocks;
 
     openFileList[fd].bytesFromStart = (openFileList[fd].bytesFromStart + length); //new file position
 
 
-    LBAwrite(source, numBlocks , openFileList[fd].bytesFromStart/currVCBPtr->blockSize + currOffset);
+    LBAwrite(source, numBlocks , currBlock + currOffset);
 
 
 //    else if (length + currOffset < (currVCBPtr->blockSize * 2)) //content doesn't fit in space
