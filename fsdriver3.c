@@ -10,6 +10,7 @@
 #include <time.h>
 #include "copymove.c"
 #include "fsLow.h"
+#include "stack.c"
 #include "hashImplement.c"
 #include <limits.h>
 #include <stdint.h>
@@ -45,6 +46,9 @@
 
 
 int currentDir = 0;
+
+struct StackNode *freeBlockStack = NULL;
+
 
 typedef struct rootDir {
     uint64_t id,    //dateModified for ...
@@ -267,9 +271,24 @@ void loop(uint64_t blockSize) {
         } else if (strcmp(command[0], "move") == 0) {
             moveFile(command[1], command[2]);
         } else if (strcmp(command[0], "touch") == 0) {
-            int fd = fileIDCheck(command[1]);
+            //nt fd = fileIDCheck(command[1]);
+            //openFileList[fd].name = command[1];
+            //addFile(fd);
+            int fd;
+            fd = fopen(command[1], "w");
+            if (fd == NULL)
+                printf("null\n");
+            else {
+                fd = fileIDCheck(command[1]); //
+            }
+            //make sure it isnt a dir
+            if (openFileList[fd].flags == 1) {
+                printf("cannot write a directory\n");
+                continue;
+            }
             openFileList[fd].name = command[1];
-            addFile(fd);
+            printf("calling write function now\n");
+            fsWrite(fd, "", 1);
         } else if (strcmp(command[0], "rm") == 0) {
             removeFile(command[1]);
         } else if (strcmp(command[0], "read") == 0) {
@@ -292,7 +311,7 @@ void loop(uint64_t blockSize) {
                 strcpy(copiedText, token);
                 length = strlen(copiedText);
                 if (length > BUFFSIZE) {
-//                    printf("realloc\n");
+                    printf("realloc\n");
                     copiedText = realloc(copiedText, BUFFSIZE);
                 }
                 token = strtok(NULL, "\"\n");
@@ -313,6 +332,7 @@ void loop(uint64_t blockSize) {
             }
 
             openFileList[fd].name = command[1];
+            printf("calling write function now\n");
             fsWrite(fd, copiedText, length);
         } else if (strcmp(command[0], "cptofs") == 0) {
             printf("copying file from virtual FS to real FS\n");
@@ -377,20 +397,23 @@ void cptofs(char *fileName, int fd) {
  *  No return
  * */
 char *fsRead(int fd) {
-    char *pBuf = malloc(sizeof(char) * currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
-    char *tempBuf = malloc(currVCBPtr->blockSize * sizeof(char));
+    for (int i = 0; i < openFileList[currentDir].numOfChildren;i++){
+        if (openFileList[currentDir].dirChildren[i] == fd) {
+            char *pBuf = malloc(sizeof(char) * currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
+            char *tempBuf = malloc(currVCBPtr->blockSize * sizeof(char));
 
-    for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
-        LBAread(tempBuf, 1, openFileList[fd].usedBlocks[i]);
-        strcat(pBuf, tempBuf);
+            for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
+                LBAread(tempBuf, 1, openFileList[fd].usedBlocks[i]);
+                strcat(pBuf, tempBuf);
+            }
+            //int retVal = LBAread(pBuf, 1, openFileList[fd].usedBlocks[0]);
+
+            printf("text: %s\n", pBuf);
+            return pBuf;
+        }
     }
-
-
-
-    //int retVal = LBAread(pBuf, 1, openFileList[fd].usedBlocks[0]);
-
-    printf("text: %s\n", pBuf);
-    return pBuf;
+    printf("file not found\n");
+    return "file not found\n";
 }
 
 
@@ -779,41 +802,57 @@ int copyFile(char *fileName, char *destination) {
 void removeFile(char *filename) {
 //    todo: reallocate this memory for use in write functions
     int fd = ht_get(hashTable, filename);
+    char *overWriteBlock = malloc(sizeof(char) * currVCBPtr->blockSize);
+    //create string of 512 blocks
+    for (int i = 0; i < currVCBPtr->blockSize; i++) {
+        strcat(overWriteBlock, ".");
+    }
+    //overwrites all used blocks belonging to a file with .'s
+    for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
+        push(&freeBlockStack, openFileList[fd].usedBlocks[i]);
+        LBAwrite(overWriteBlock, 1, openFileList[fd].usedBlocks[i]);
+    }
     ht_del(hashTable, filename);
     openFileList[currentDir].dirChildren[openFileList[fd].childElementIndex] = 0; //index into current dir's children, where index number is the file to deletes index, and set to 0
-//    char *f;
-//    for (int i = 0; i < 512; i++) {//we are really doing this...sorry
-//        strcat(f, ".");
-//    }
-//    fsWrite(fd,f,sizeof(f));
     printf("Deleted %s\n", filename);
+
 }
 
-void addFile(int fd) {
-    if (openFileList[fd].usedBlocks[0] == NULL || openFileList[fd].usedBlocks[0] == 0) {
-        if (fd == 1) {
-//            openFileList[fd] = openFileList[0];
-            openFileList[fd].usedBlocks[0] = 1;
-            openFileList[fd].bytesFromStart = 512;
-        } else {
-            openFileList[fd].usedBlocks[0] = currVCBPtr->freeBlockLoc;
-            openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
-        }
+//checks the stack to see if we have a reclaimed block, if so return that. If not get a new block from currvcbptr and ++
+int getFreeBlock() {
+    int reclaimedBlockCheck = pop(&freeBlockStack);
+    if (reclaimedBlockCheck == INT_MIN) {
+        reclaimedBlockCheck = currVCBPtr->freeBlockLoc;
+        currVCBPtr->freeBlockLoc++;
     }
+    return reclaimedBlockCheck;
+}
 
-    uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;  //block num
 
-    char *temp = "";
-//    printf("free block location: %lu\n", currVCBPtr->freeBlockLoc);
-//    printf("current block location: %lu\n", currBlock);
-    LBAwrite(temp, 1, currBlock);
-    currVCBPtr->freeBlockLoc++;
-    openFileList[fd].parentId = currentDir;
-    openFileList[fd].flags = 0;
-    openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = fd;
-    openFileList[fd].childElementIndex = openFileList[currentDir].numOfChildren;
-    openFileList[currentDir].numOfChildren++;
-    openFileList[fd].isNewFile = 0;
+void addFile(int fd) {
+//    if (openFileList[fd].isNewFile == 1) {
+//        fsWrite(fd, "", 0);
+//    }
+//    if (openFileList[fd].isNewFile == 1) {
+//
+//        openFileList[fd].usedBlocks[0] = getFreeBlock();
+//        openFileList[fd].bytesFromStart = openFileList[fd].usedBlocks[0] * 512;
+//        char *temp = "";
+////    printf("free block location: %lu\n", currVCBPtr->freeBlockLoc);
+////    printf("current block location: %lu\n", currBlock);
+//        uint64_t currBlock = openFileList[fd].bytesFromStart / currVCBPtr->blockSize;  //block num
+//        LBAwrite(temp, 1, currBlock);
+//        //currVCBPtr->freeBlockLoc++;
+//        openFileList[fd].parentId = currentDir;
+//        openFileList[fd].flags = 0;
+//        openFileList[currentDir].dirChildren[openFileList[currentDir].numOfChildren] = fd;
+//        openFileList[fd].childElementIndex = openFileList[currentDir].numOfChildren;
+//        openFileList[currentDir].numOfChildren++;
+//        openFileList[fd].isNewFile = 0;
+//        openFileList[fd].usedBlocks[0]=getFreeBlock();
+//
+//        openFileList[fd].numBlocksUsed = 1;
+//    }
 }
 
 /*  This function writes content to the filesystem
@@ -826,16 +865,17 @@ void addFile(int fd) {
  * */
 uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //todo: write open file list and currvcbptr to disk so that when we reopen the filesystem we can pick up where we left off
+
     int currBlock = openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed - 1];
-    printf("beginning-curblock: %d\n",currBlock);
+    printf("beginning-curblock: %d\n", currBlock);
     int currOffset = (openFileList[fd].bytesFromStart % 512);  //remainder(where you are in the current block)
-    printf("beginning-curroffset: %d\n",currOffset);
+    printf("beginning-curroffset: %d\n", currOffset);
 
     int freeBlockSpace = currVCBPtr->blockSize - (openFileList[fd].bytesFromStart % 512);
     int overBlockLength = length > freeBlockSpace;
     int numBlocksToWrite = ((length + currOffset) / 512); //numBlocksToWrite includes current block
     if ((length + currOffset) % 512 != 0) numBlocksToWrite++;
-    printf("beginning-numblockstowrite: %d\n",numBlocksToWrite);
+    printf("beginning-numblockstowrite: %d\n", numBlocksToWrite);
     //numBlocksToWrite = total number of blocks we need to LBA write to (currBlock + any more we need to write to).
 
     time_t seconds;
@@ -846,9 +886,15 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     printf("size: %llu\n", openFileList[fd].size);
 
     if (openFileList[fd].isNewFile) {
-        openFileList[fd].usedBlocks[0] = currVCBPtr->freeBlockLoc;
-        printf("usedblocks[0]: %llu\n",openFileList[fd].usedBlocks[0]);
-        currVCBPtr->freeBlockLoc++;
+        //openFileList[fd].usedBlocks[0] = getFreeBlock();
+        for(int i =0; i < numBlocksToWrite; i++){
+            openFileList[fd].usedBlocks[i] = getFreeBlock();
+            LBAwrite(source, 1, openFileList[fd].usedBlocks[i]);
+            printf("written to %s, 1, %llu", source,openFileList[fd].usedBlocks[i]);
+        }
+
+        printf("usedblocks[0]: %llu\n", openFileList[fd].usedBlocks[0]);
+
         openFileList[fd].bytesFromStart = openFileList[fd].usedBlocks[0] * 512;
         openFileList[fd].numBlocksUsed = 1;
         openFileList[fd].flags = 0;
@@ -860,8 +906,25 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[currentDir].numOfChildren++;
         openFileList[fd].parentId = currentDir;
 
-        LBAwrite(source, numBlocksToWrite, openFileList[fd].usedBlocks[0]);
+
+
+
     } else { //is not a new file
+
+        //check to see if file is in currDir
+        int fileInDirectory = 0;
+        for (int i = 0; i < openFileList[currentDir].numOfChildren; i++){
+            if (openFileList[currentDir].dirChildren[i] == fd) {
+                printf("file found\n");
+                fileInDirectory = 1;
+                break;
+            }
+        }
+        if (fileInDirectory == 0){
+            printf("file not found\n");
+            return 1;
+        }
+
         char *buffer = malloc(sizeof(char) * 512);
         LBAread(buffer, 1, currBlock);
         if (overBlockLength) {
@@ -872,10 +935,15 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
             numBlocksToWrite--; //update numBlocksToWrite
 
             //write to next available block(s)
-            currBlock = currVCBPtr->freeBlockLoc;
-            printf("overBlockLength->currblock: %d\n",currBlock);
+            //currBlock = getFreeBlock();
+            printf("overBlockLength->currblock: %d\n", currBlock);
             source = &source[freeBlockSpace + 1];
-            LBAwrite(source, numBlocksToWrite , currBlock);
+            for(int i =0; i < numBlocksToWrite; i++){
+                openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed+i] = getFreeBlock();
+                openFileList[fd].numBlocksUsed++;
+                LBAwrite(source, 1, openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed + i]);
+            }
+            //LBAwrite(source, numBlocksToWrite, currBlock);
         } else {
             strcat(buffer, source);
             LBAwrite(buffer, numBlocksToWrite, currBlock);
@@ -884,16 +952,17 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
     }
 
 
-    if (overBlockLength){
+    if (overBlockLength) {
         //update usedBlocks array and curVCBPtr->freeBlocLoc
-        printf("numblockstowrite: %d\n",numBlocksToWrite);
-        for (int i = 0; i < numBlocksToWrite; i++) {
-            openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed + i] = currVCBPtr->freeBlockLoc;
-            currVCBPtr->freeBlockLoc++;
-            openFileList[fd].numBlocksUsed++;
-        }
-        printf("last blocked used: %d\n",openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed - 1]);
-        openFileList[fd].bytesFromStart = (openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed - 1] * 512) + strlen(source);
+        printf("numblockstowrite: %d\n", numBlocksToWrite);
+//        for (int i = 0; i < numBlocksToWrite; i++) {
+//            openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed + i] = currVCBPtr->freeBlockLoc;
+//            currVCBPtr->freeBlockLoc++;
+//            openFileList[fd].numBlocksUsed++;
+//        }
+        printf("last blocked used: %d\n", openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed - 1]);
+        openFileList[fd].bytesFromStart =
+                (openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed - 1] * 512) + strlen(source);
     } else {
         openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
     }
