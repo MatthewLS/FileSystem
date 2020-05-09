@@ -379,14 +379,9 @@ void cptofs(char *fileName, int fd) {
 char *fsRead(int fd) {
     char *pBuf = malloc(currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
     char *tempBuf = malloc(currVCBPtr->blockSize * sizeof(char));
-//    printf("usedBlocks[0]: %lu\n", openFileList[fileId].usedBlocks[0]);
-//    printf("fileId: %d\n", fileId);
 
     for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
-        LBAread(tempBuf, 1, openFileList[fd].usedBlocks[0]);
-
-
-//        memcpy(pBuf + (sizeof(tempBuf)*i), tempBuf, currVCBPtr->blockSize * sizeof(char));
+        LBAread(tempBuf, 1, openFileList[fd].usedBlocks[i]);
         strcat(pBuf, tempBuf);
     }
 
