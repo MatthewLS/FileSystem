@@ -377,7 +377,7 @@ void cptofs(char *fileName, int fd) {
  *  No return
  * */
 char *fsRead(int fd) {
-    char *pBuf = malloc(currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
+    char *pBuf = malloc(sizeof(char) * currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
     char *tempBuf = malloc(currVCBPtr->blockSize * sizeof(char));
 
     for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
@@ -828,18 +828,19 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
 //todo: write open file list and currvcbptr to disk so that when we reopen the filesystem we can pick up where we left off
     int freeBlockSpace = currVCBPtr->blockSize - (openFileList[fd].bytesFromStart % 512);
     int overBlockLength = length > freeBlockSpace;
-    int numBlocksToWrite = (length / 512);
-    if (length % 512 != 0)
-        numBlocksToWrite++;
+    int numBlocksToWrite = (length / 512); //including blocks already written to
+    if (length % 512 != 0) numBlocksToWrite++;
+    //if (overBlockLength) numBlocksToWrite++;
 
     time_t seconds;
     seconds = time(NULL);
 
     if (openFileList[fd].isNewFile) {
         openFileList[fd].usedBlocks[0] = currVCBPtr->freeBlockLoc;
-        openFileList[fd].bytesFromStart = currVCBPtr->freeBlockLoc * 512;
+        openFileList[fd].bytesFromStart = openFileList[fd].usedBlocks[0] * 512;
         openFileList[fd].numBlocksUsed=1;
         openFileList[fd].flags = 0;
+        openFileList[fd].isNewFile = 0;
 
         //directory stuff
         openFileList[fd].childElementIndex = openFileList[currentDir].numOfChildren;
@@ -847,23 +848,18 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         openFileList[currentDir].numOfChildren++;
         openFileList[fd].parentId = currentDir;
     }
-    //set flags
     openFileList[fd].dateModified = seconds;
-
     openFileList[fd].size += length;
     printf("size: %llu\n",openFileList[fd].size);
 
 
 
     uint64_t currBlock = openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed - 1];  //block num
-//    printf("bytes from start: %llu\n",openFileList[fd].bytesFromStart);
     int currOffset = (openFileList[fd].bytesFromStart % 512);  //remainder(where you are in the current block)
-    printf("curoffset: %llu\n",currOffset);
 
     //if we are going to write over the length of a block
     if (overBlockLength) {
-        overBlockLength=1;
-        printf("length>freeblockspace\n");
+        printf("length > freeblockspace\n");
         int blocksToWrite = currBlock+1;
         for (int i = 0; i < numBlocksToWrite; i++){
             openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed] = blocksToWrite + i;
@@ -872,29 +868,40 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         currBlock = currVCBPtr->freeBlockLoc;
     }
 
-    if (openFileList[fd].isNewFile || overBlockLength) {
-        openFileList[fd].isNewFile = 0;
-        currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + numBlocksToWrite;
-    }
-
-    printf("block being written: %llu\n",currBlock);
-    printf("source: %s, numBlocksToWrite: %d, pos: %llu\n",source, numBlocksToWrite, currBlock+currOffset);
-
     if (!openFileList[fd].isNewFile){
-        //LBARead what is in current block, then just memcpy to our source
         char* buffer = malloc(sizeof(char) * 512);
         LBAread(buffer,1,currBlock);
-        strcat(buffer,source);
-        LBAwrite(buffer, numBlocksToWrite, currBlock);
-        free(buffer);
+
+
+        if (overBlockLength){
+            size_t len = strlen(buffer);
+            memcpy(&buffer[len+1],source,freeBlockSpace);
+            printf("buffer: %s\n",buffer);
+            LBAwrite(buffer, 1, currBlock);
+            currBlock=currVCBPtr->freeBlockLoc;
+            printf("CURRENT BLOCK: %D\n",currBlock);
+            source = &source[freeBlockSpace+1];
+            printf("source: %s\n",source);
+
+            LBAwrite(source,numBlocksToWrite,currBlock);
+            currVCBPtr->freeBlockLoc = currVCBPtr->freeBlockLoc + numBlocksToWrite-1;
+        } else {
+            strcat(buffer,source);
+            LBAwrite(buffer, numBlocksToWrite, currBlock);
+            free(buffer);
+        }
     } else {
         LBAwrite(source, numBlocksToWrite, currBlock);
     }
 
 
 
-
-    openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
+    if (overBlockLength){
+        openFileList[fd].bytesFromStart = (openFileList[fd].usedBlocks[openFileList[fd].numBlocksUsed-1]*512) + strlen(source);
+        openFileList[fd].numBlocksUsed--;
+    } else {
+        openFileList[fd].bytesFromStart = openFileList[fd].bytesFromStart + length; //new file position
+    }
     printf("bytes from start: %llu\n",openFileList[fd].bytesFromStart);
 
     return 0;
