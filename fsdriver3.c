@@ -890,6 +890,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         //openFileList[fd].usedBlocks[0] = getFreeBlock();
         for(int i =0; i < numBlocksToWrite; i++){
             openFileList[fd].usedBlocks[i] = getFreeBlock();
+            currBlock = openFileList[fd].usedBlocks[i];
             LBAwrite(source, 1, openFileList[fd].usedBlocks[i]);
             printf("written to %s, 1, %llu", source,openFileList[fd].usedBlocks[i]);
         }
