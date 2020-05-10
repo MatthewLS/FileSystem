@@ -178,6 +178,7 @@ int main(int argc, char *argv[]) {
 }
 
 void loop(uint64_t blockSize) {
+    int numCommands = 0;
     int stat = 1,   //status?
     retVal,     //return value
     counter = 0;     //counter
@@ -209,6 +210,7 @@ void loop(uint64_t blockSize) {
             printf("could not allocate space\n");
         for (int i = 0; i < BUFFSIZE; i++) {
             command[i] = malloc(BUFFER_LENGTH * sizeof(char));
+            numCommands++;
             if (command[i] == NULL)
                 printf("could not allocate space\n");
         }
@@ -221,13 +223,6 @@ void loop(uint64_t blockSize) {
             printf("over256\n");
             line = realloc(line, BUFFER_LENGTH * 3);
         }
-
-        char *tempLine = malloc(BUFFER_LENGTH * sizeof(char));
-        if ((sizeof(tempLine) / sizeof(char) + 1) > BUFFER_LENGTH) {
-            printf("realloc templine\n");
-            tempLine = realloc(tempLine, BUFFER_LENGTH * 3);
-        }
-        strcpy(tempLine, line);
 
         token = strtok(line, " \n");
         while (token == NULL) {
@@ -320,6 +315,7 @@ void loop(uint64_t blockSize) {
             else{
             fsWrite(fd, lineForWrite, strlen(lineForWrite));
             printf("Called write function with %s\n",lineForWrite);
+            printf("Called write function with length %llu\n",strlen(lineForWrite));
             }
 
         } else if (strcmp(command[0], "cptofs") == 0) {
@@ -356,6 +352,7 @@ void loop(uint64_t blockSize) {
 
 
             fsWrite(fd, buffer, sizeof(buffer));
+            // free(buffer);
         } else {
             
             printf("Command %s not found.\n", command[0]);
@@ -364,8 +361,13 @@ void loop(uint64_t blockSize) {
     }
     //switch/if statements to call subroutines based off that command
 
-    free(command);
-    free(line);
+    // for(int i = 0;i<numCommands;i++){
+    //     free(command[i]);
+    // }
+
+    // free(command);
+    // free(line);
+    // free(lineForWrite);
     return;
 }
 
@@ -392,15 +394,15 @@ char *fsRead(int fd) {
         if (openFileList[currentDir].dirChildren[i] == fd) {
                 printf("IN READ FUNC1\n");
 
-            char *pBuf = malloc(sizeof(char) * currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
+            char *pBuf = malloc(sizeof(char) * 512000);
                 printf("IN READ FUNC2\n");
 
-            char *tempBuf = malloc(sizeof(char) * currVCBPtr->blockSize);
+            char *tempBuf = malloc(sizeof(char) * 512000);
     printf("IN READ FUNC3\n");
 
             for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
                 LBAread(tempBuf, 1, openFileList[fd].usedBlocks[i]);
-                printf("block num: %llu, text: %s", openFileList[fd].usedBlocks[i], tempBuf);
+                printf("block num: %llu, text: %s\n", openFileList[fd].usedBlocks[i], tempBuf);
             
                 strcat(pBuf, tempBuf);
             }
@@ -435,7 +437,7 @@ char *initFreeMap(uint64_t volumeSize, uint64_t blockSize, uint64_t startPos) {
         freeBytesNeeded = (freeBytesNeeded / blockSize) + 1;   //makes free bytes even
 
     //printf("Total Blocks");
-    char *freeBuffer = malloc(freeBlocksNeeded * blockSize);    //allocate space for FCB
+    char *freeBuffer = (freeBlocksNeeded * blockSize);    //allocate space for FCB
     memset(freeBuffer, 0xFF, freeBlocksNeeded * blockSize);      //initialize FF to free block
 
     flipFreeBlockBit(freeBuffer, 0, 1); //clears out VCB
@@ -946,7 +948,7 @@ uint64_t fsWrite(int fd, char *source, uint64_t length) {
         } else {
             strcat(buffer, source);
             LBAwrite(buffer, numBlocksToWrite, currBlock);
-            free(buffer);
+            // free(buffer);
         }
     }
 
