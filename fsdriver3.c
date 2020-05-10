@@ -298,8 +298,6 @@ void loop(uint64_t blockSize) {
             fsRead(fileIDCheck(command[1]));
 
         } else if (strcmp(command[0], "write") == 0) {
-
-            char *copiedText = malloc(BUFFSIZE * sizeof(char));  //temporary copied text
             printf("in write function \n");
             //printf("line:%s\n", tempLine);
             token = strtok(tempLine, "\""); //tokenizer
@@ -323,9 +321,14 @@ void loop(uint64_t blockSize) {
 
             openFileList[fd].name = command[1];
             strcpy(lineForWrite, getWriteInput(lineForWrite));
-            printf("calling write function now\n");
+            if(strlen(lineForWrite) == 0){
+            printf("Invalid input. Please use write function like: write filename \"inputstring\"\n");
+            }
+            else{
             fsWrite(fd, lineForWrite, strlen(lineForWrite));
             printf("Called write function with %s\n",lineForWrite);
+            }
+
         } else if (strcmp(command[0], "cptofs") == 0) {
             printf("copying file from virtual FS to real FS\n");
             cptofs(command[1], ht_get(hashTable, command[1]));
