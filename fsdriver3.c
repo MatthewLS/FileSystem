@@ -299,13 +299,6 @@ void loop(uint64_t blockSize) {
 
         } else if (strcmp(command[0], "write") == 0) {
             printf("in write function \n");
-            //printf("line:%s\n", tempLine);
-            token = strtok(tempLine, "\""); //tokenizer
-            while (token == NULL) { //empty case
-                printf(">");
-                fgets(tempLine, BUFFER_LENGTH, stdin);      //gets line since old one was empty
-                token = strtok(tempLine, " \n");
-            }            
             int fd;
             fd = fopen(command[1], "w");
             if (fd == NULL)
@@ -377,6 +370,7 @@ void loop(uint64_t blockSize) {
 }
 
 void cptofs(char *fileName, int fd) {
+    printf("IN COPY TO FS");
     char *fileContents = fsRead(fd);
     char currWD[BUFFER_LENGTH];
     getcwd(currWD, sizeof(currWD));
@@ -393,16 +387,25 @@ void cptofs(char *fileName, int fd) {
  *  No return
  * */
 char *fsRead(int fd) {
+    printf("IN READ FUNC\n");
     for (int i = 0; i < openFileList[currentDir].numOfChildren;i++){
         if (openFileList[currentDir].dirChildren[i] == fd) {
+                printf("IN READ FUNC1\n");
+
             char *pBuf = malloc(sizeof(char) * currVCBPtr->blockSize * openFileList[fd].numBlocksUsed);
-            char *tempBuf = malloc(currVCBPtr->blockSize * sizeof(char));
+                printf("IN READ FUNC2\n");
+
+            char *tempBuf = malloc(sizeof(char) * currVCBPtr->blockSize);
+    printf("IN READ FUNC3\n");
 
             for (int i = 0; i < openFileList[fd].numBlocksUsed; i++) {
                 LBAread(tempBuf, 1, openFileList[fd].usedBlocks[i]);
+                printf("block num: %llu, text: %s", openFileList[fd].usedBlocks[i], tempBuf);
+            
                 strcat(pBuf, tempBuf);
             }
             //int retVal = LBAread(pBuf, 1, openFileList[fd].usedBlocks[0]);
+            printf("numblocksused: %llu\n", openFileList[fd].numBlocksUsed);
 
             printf("text: %s\n", pBuf);
             return pBuf;
