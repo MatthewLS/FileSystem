@@ -47,7 +47,6 @@
 
 int currentDir = 0;
 
-struct StackNode *freeBlockStack = NULL;
 
 
 typedef struct rootDir {
@@ -120,8 +119,6 @@ void cptofs(char *, int);
 
 int copyFile(char *, char *);
 
-int fsWrite2(char *, uint64_t);
-
 void loop(uint64_t);
 
 char *initFreeMap(uint64_t, uint64_t, uint64_t);
@@ -143,6 +140,10 @@ int myFSSeek(int, uint64_t, int);
 uint64_t fsWrite(int, char *, uint64_t);
 
 int fileIDCheck(char *);
+
+struct StackNode *freeBlockStack = NULL;
+
+char* getWriteInput(char* line);
 
 int main(int argc, char *argv[]) {
     char *fileName;
@@ -185,6 +186,7 @@ void loop(uint64_t blockSize) {
     *token, //for tokenizer
     *fsystem, //name of filesystem
     **command; //command & arg list
+    char *lineForWrite = malloc(BUFFER_LENGTH * sizeof(char)); //for holding line passed to write parser
     struct Directory *entry;
 
     printf("_________         ___.    .__                  __   \n");
@@ -214,6 +216,7 @@ void loop(uint64_t blockSize) {
 
         //make a little loop to accept user input
         fgets(line, BUFFER_LENGTH, stdin);
+        strcpy(lineForWrite, line);
         if ((sizeof(line) / sizeof(char) + 1) > BUFFER_LENGTH) {
             printf("over256\n");
             line = realloc(line, BUFFER_LENGTH * 3);
@@ -304,20 +307,7 @@ void loop(uint64_t blockSize) {
                 printf(">");
                 fgets(tempLine, BUFFER_LENGTH, stdin);      //gets line since old one was empty
                 token = strtok(tempLine, " \n");
-            }
-            //int length = (sizeof(*copiedText) / sizeof(char)) + 1;
-            size_t length;
-            while (token != NULL) {
-                strcpy(copiedText, token);
-                length = strlen(copiedText);
-                if (length > BUFFSIZE) {
-                    printf("realloc\n");
-                    copiedText = realloc(copiedText, BUFFSIZE);
-                }
-                token = strtok(NULL, "\"\n");
-            }
-            //int length = sizeof(copiedText) / (sizeof(char) + 1);
-//            printf("Length: %i\n", length);
+            }            
             int fd;
             fd = fopen(command[1], "w");
             if (fd == NULL)
@@ -332,8 +322,10 @@ void loop(uint64_t blockSize) {
             }
 
             openFileList[fd].name = command[1];
+            strcpy(lineForWrite, getWriteInput(lineForWrite));
             printf("calling write function now\n");
-            fsWrite(fd, copiedText, length);
+            fsWrite(fd, lineForWrite, strlen(lineForWrite));
+            printf("Called write function with %s\n",lineForWrite);
         } else if (strcmp(command[0], "cptofs") == 0) {
             printf("copying file from virtual FS to real FS\n");
             cptofs(command[1], ht_get(hashTable, command[1]));
@@ -1018,3 +1010,10 @@ int fileIDCheck(char *filename) {
         return tempCheck;       //return dateModified
     }
 }
+
+char* getWriteInput(char* line){
+  char* buff = malloc(sizeof(char)*51200);
+  sscanf (line, "%*[^\"]\"%[^\"]\"", buff);
+  return buff;
+}
+
