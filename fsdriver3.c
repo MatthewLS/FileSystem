@@ -23,7 +23,7 @@
 #define AVGDIRECTORYENTRIES 50
 #define EXIT_SUCCESS 0
 #define MAXCOMMLIST 5
-#define BUFFER_LENGTH 256
+#define BUFFER_LENGTH 5120
 #define NAME_LENGTH 128
 #define CONTIGUOUS 1
 #define NOTCONTIGUOUS 0
@@ -364,7 +364,8 @@ void loop(uint64_t blockSize) {
 
             fsWrite(fd, buffer, sizeof(buffer));
         } else {
-            printf("Command not found.\n");
+            
+            printf("Command %s not found.\n", command[0]);
         }
         counter = 0;
     }
