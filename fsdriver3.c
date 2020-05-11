@@ -8,7 +8,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <time.h>
-#include "copymove.c"
 #include "fsLow.h"
 #include "stack.c"
 #include "hashImplement.c"
@@ -23,6 +22,7 @@
 #define AVGDIRECTORYENTRIES 50
 #define EXIT_SUCCESS 0
 #define MAXCOMMLIST 5
+#define BUFFSIZE 256	 //buffer space
 #define BUFFER_LENGTH 5120
 #define NAME_LENGTH 128
 #define CONTIGUOUS 1
@@ -269,13 +269,7 @@ void loop(uint64_t blockSize) {
         } else if (strcmp(command[0], "move") == 0) {
             moveFile(command[1], command[2]);
         } else if (strcmp(command[0], "touch") == 0) {
-            int fd;
-            fd = fopen(command[1], "w");
-            if (fd == NULL)
-                printf("null\n");
-            else {
-                fd = fileIDCheck(command[1]); //
-            }
+            int fd = fileIDCheck(command[1]);
             //make sure it isnt a dir
             if (openFileList[fd].flags == 1) {
                 printf("cannot write a directory\n");
@@ -291,13 +285,7 @@ void loop(uint64_t blockSize) {
 
         } else if (strcmp(command[0], "write") == 0) {
             printf("in write function \n");
-            int fd;
-            fd = fopen(command[1], "w");
-            if (fd == NULL)
-                printf("null\n");
-            else {
-                fd = fileIDCheck(command[1]); //
-            }
+            int fd = fileIDCheck(command[1]);
             //make sure it isnt a dir
             if (openFileList[fd].flags == 1) {
                 printf("cannot write a directory\n");
