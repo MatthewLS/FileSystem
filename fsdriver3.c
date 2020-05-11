@@ -139,6 +139,10 @@ int myFSSeek(int, uint64_t, int);
 
 uint64_t fsWrite(int, char *, uint64_t);
 
+void saveControlBlock();
+
+void readControlBlock();
+
 int fileIDCheck(char *);
 
 struct StackNode *freeBlockStack = NULL;
@@ -237,6 +241,7 @@ void loop(uint64_t blockSize) {
             counter++;
         }
         if (strcmp(command[0], "Q") == 0 || strcmp(command[0], "q") == 0) {
+
             printf("Exiting\n");
             stat = 0;
         } else if (strcasecmp(command[0], "help") == 0) {
@@ -344,6 +349,9 @@ void loop(uint64_t blockSize) {
             printf("Command %s not found.\n", command[0]);
         }
         counter = 0;
+
+        saveControlBlock();
+
     }
     //switch/if statements to call subroutines based off that command
 
@@ -485,6 +493,100 @@ void freeMap(uint64_t volumeSize, uint64_t blockSize) {
  *
  *  no return
  */
+
+void readControlBlock(){
+        char* read = malloc(sizeof(openFileEntry) * 256);
+        char* singleOF;
+        char* ofElement;
+        int count = 0;
+        int maincount = 0;
+        //int numElementsInOF = 13;
+
+        LBAread(read,1,9);
+        char * pch;
+  printf ("Splitting string \"%s\" into tokens:\n",read);
+  pch = strtok (read,"*");
+  char* buff = malloc(sizeof(char)*BUFFER_LENGTH);
+
+  while (pch != NULL)
+  {
+    strcpy(buff, pch);
+    printf ("OF %s\n",buff);
+    char* element;
+    element = strtok(buff,":");
+    while(element!=NULL){
+     printf ("EL %s\n",element);
+        element = strtok(NULL, ":");
+    }
+    pch = strtok (NULL, "*");
+  }
+
+}
+
+void saveControlBlock(){
+     char* buff = malloc(sizeof(openFileList) * 256);
+            char* read = malloc(sizeof(openFileList) * 256);
+            char* tostring = malloc(sizeof(char) * 256);
+            for(int i = 0; i < latestID+1; i++){
+                sprintf(tostring, "%llu", openFileList[i].flags);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].bytesFromStart);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].size);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].dateModified);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].dateCreated);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                for(int j = 0; j < openFileList[i].numBlocksUsed; j++){
+                sprintf(tostring, "%llu", openFileList[i].usedBlocks[j]);
+                strcat(buff, tostring);
+                strcat(buff, ",");
+                }
+                strcat(buff, ":");
+                sprintf(tostring, "%s", openFileList[i].fileBuffer);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].parentId);
+                strcat(buff, tostring);
+                strcat(buff, ":");   
+                for(int j = 0; j < openFileList[i].numOfChildren; j++){
+                    sprintf(tostring, "%llu", openFileList[i].dirChildren[j]);
+                strcat(buff, tostring);
+                strcat(buff, ",");
+                }
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].numBlocksUsed);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].numOfChildren);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].childElementIndex);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%s", openFileList[i].name);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                sprintf(tostring, "%llu", openFileList[i].isNewFile);
+                strcat(buff, tostring);
+                strcat(buff, ":");
+                strcat(buff, "*");        
+
+            }
+                        //printf("writing %s\n",buff);
+
+                        LBAwrite(buff,1,9);
+
+                        readControlBlock();
+
+                        
+}
 
 void createDir(char *dirName, int fd) {
 //  file = 0 for flag and dir = 1 for flag
