@@ -510,15 +510,20 @@ void readControlBlock(){
 
   while (pch != NULL)
   {
-    strcpy(buff, pch);
+    memcpy(buff, pch, sizeof(pch)*512);
     printf ("OF %s\n",buff);
-    char* element;
+  
+  char* element;
     element = strtok(buff,":");
     while(element!=NULL){
      printf ("EL %s\n",element);
         element = strtok(NULL, ":");
     }
+
+
     pch = strtok (NULL, "*");
+    printf ("OF %s\n",pch);
+
   }
 
 }
