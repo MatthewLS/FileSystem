@@ -98,7 +98,7 @@ typedef struct vcbStruct {
 vcbStruct *currVCBPtr;
 
 ht_t *hashTable;            //hash table variable
-int latestID = 0;     //counter for # of files/file dateModified's
+int latestID = 5;     //counter for # of files/file dateModified's
 
 
 char *fsRead(int);
@@ -310,6 +310,7 @@ void loop(uint64_t blockSize) {
             printf("Invalid input. Please use write function like: write filename \"inputstring\"\n");
             }
             else{
+
             fsWrite(fd, lineForWrite, strlen(lineForWrite));
             printf("Called write function with %s\n",lineForWrite);
             printf("Called write function with length %llu\n",strlen(lineForWrite));
@@ -375,8 +376,10 @@ void cptofs(char *fileName, int fd) {
     getcwd(currWD, sizeof(currWD));
     printf("Current Working Directory: %s\n", currWD);
     FILE *OutFile = fopen(fileName, "w");
-    fprintf(OutFile, "%s", fileContents);
+    fputs(fileContents, OutFile);
+    fclose(OutFile);
     printf("File written to: %s/%s\n", currWD, fileName);
+    printf("File contents: %s\n", fileContents);
 }
 
 /*  Function reads in data
