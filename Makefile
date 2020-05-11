@@ -17,5 +17,5 @@ fsdriver3.o: fsdriver3.c
 exec:
 	./cabinet
 clean:
-	rm -rf cabinet
+	rm -rf cabinet fsdriver3.o
 
