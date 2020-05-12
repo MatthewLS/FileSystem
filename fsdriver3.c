@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
     printf("line done\n");
     char **line2,
         *line1,
-        *token
+        *token;
     int counter = 0;
     printf("before loop\n");
 
