@@ -30,7 +30,7 @@ void push(struct StackNode** root, int data)
     struct StackNode* stackNode = newNode(data);
     stackNode->next = *root;
     *root = stackNode;
-    printf("%d pushed to stack\n", data);
+   // printf("%d pushed to stack\n", data);
 }
 
 int pop(struct StackNode** root)
