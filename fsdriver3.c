@@ -103,19 +103,6 @@ int main(int argc, char *argv[]) {
     currVCBPtr->blockSize = 512;
     openFileList = malloc(sizeof(openFileList) * 256);
 
-    printf("parsing\n");
-    //random parse code
-    char* testline = "1:0:0:0:0::bierman is God:0:6,:0:1:0:(null):0~0:0:0:0:0::(null):0::0:0:0:(null):0~0:0:0:0:0::(null):0::0:0:0:(null):0~0:0:0:0:0::(null):0::0:0:0:(null):0~0:0:0:0:0::(null):0::0:0:0:(null):0~0:0:0:0:0::(null):0::0:0:0:(null):0~0:1159:648:1589226660:0:1,2,:(null):0::2:0:0:a:0~";
-    printf("line done\n");
-    char **line2,
-        *line1,
-        *token;
-    int counter = 0;
-    printf("before loop\n");
-
-
-
-
     fileName = argv[1];
     volumeSize = 10000000;
     blockSize = 512;
@@ -318,7 +305,6 @@ void loop(uint64_t blockSize) {
 
      free(command);
      free(line);
-     //free(lineForWrite);
     return;
 }
 
@@ -661,7 +647,6 @@ int copyFile(char *fileName, char *destination) {
     fsWrite(destinationFile, contents, length);
    // printf("File written\n");
 
-   free(contents);
     return 1;
 }
 
