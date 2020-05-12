@@ -1,6 +1,26 @@
-//
-// Created by Benjamin Lewis on 5/9/20.
-//
+/**************************************************************
+* Class: CSC-415-0# Spring 2020
+* Group Name: Cabinet
+* Name: File System
+
+* Student ID: 918297424
+* Name: Matthew Stephens
+* Student ID: 915173797
+* Name: Benjamin Lewis
+* Student ID: 917871245
+* Name: Tejas Vajjhala
+* Student ID: 918383679
+* Name: Chris Manaoat
+*
+* Assignment 3 – File System *
+*
+*
+*  File: stack.c
+*
+* Description: The world's greatest file cabinet
+*
+* **************************************************************/
+
 /// C program for linked list implementation of stack
 #include <limits.h>
 #include <stdio.h>

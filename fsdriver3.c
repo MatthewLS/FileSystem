@@ -1,97 +1,33 @@
 /**************************************************************
 * Class: CSC-415-0# Spring 2020
-* Group Name:
-* Name:
+* Group Name: Cabinet
+* Name: File System
 
-* Student ID:
-* Name:
-* Student ID:
-* Name:
-* Student ID:
+* Student ID: 918297424
+* Name: Matthew Stephens
+* Student ID: 915173797
+* Name: Benjamin Lewis
+* Student ID: 917871245
+* Name: Tejas Vajjhala
+* Student ID: 918383679
+* Name: Chris Manaoat
 *
-
-*  Project: <project name, like Assignment 3 – File System *
-
-
-*  File: <name of this file>
+* Assignment 3 – File System *
 *
-* Description:
+*
+*  File: fsdriver3.c
+*
+* Description: The world's greatest file cabinet
+*
 * **************************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
-#include <limits.h>
-#include "fsLow.h"
-#include "stack.c"
-#include "hashImplement.c"
-#include "fsLow.h"
-#include "fsLow.c"
-
-#define AVGDIRECTORYENTRIES 50  //average directory size
-#define EXIT_SUCCESS 0          //exit success
-#define BUFFSIZE 256	        //buffer space
-#define BUFFER_LENGTH 5120      //buffer length
-
-typedef struct OpenFileEntry {
-    int flags,                  //1 == dir. 0 == file
-        numOfChildren,          //number of children
-        childElementIndex,      //index of child element
-        isNewFile,              //1 == should be new file 0 == should overwrite
-        parentId,               //parent id
-        numBlocksUsed,          //number of blocks used
-        dirChildren[AVGDIRECTORYENTRIES];   //list of children
-    uint64_t bytesFromStart,    //where you are in file
-            size,               //size of file(in bytes)
-            usedBlocks[1000],   //lba position that belongs to the fine
-            dateCreated,        //date created
-            dateModified;       //date modified
-    char *fileBuffer,           //contents
-         *name;                 //name of file
-} openFileEntry;
-
-typedef struct vcbStruct {
-    uint64_t blockSize,     //block size
-            freeBlockLoc;   //free block location
-
-} vcbStruct;
+#include "fsdriver3.h"
 
 openFileEntry *openFileList;    //array of currently open files
 vcbStruct *currVCBPtr;          //vcb pointer
 int currentDir = 0;             //current directory
 ht_t *hashTable;                //hash table variable
 int latestID = 5;               //counter for # of files/file dateModified's
-
-
-char *fsRead(int);
-
-void createDir(char *, int);
-
-void changeDirectory(char *);
-
-void listFiles();
-
-void moveFile(char *, char *);
-
-void removeFile(char *);
-
-void cptofs(char *, int);
-
-int copyFile(char *, char *);
-
-void loop(uint64_t);
-
-void initRootDir(uint64_t, uint64_t);
-
-uint64_t fsWrite(int, char *, uint64_t);
-
-int fileIDCheck(char *);
-
-struct StackNode *freeBlockStack = NULL;
-
-char* getWriteInput(char* line);
 
 int main(int argc, char *argv[]) {
     char *fileName;             //file name
@@ -134,8 +70,7 @@ int main(int argc, char *argv[]) {
  */
 void loop(uint64_t blockSize) {
     int numCommands = 0,    //number of commands
-        stat = 1,           //status?
-        retVal,             //return value
+        stat = 1,           //status
         counter = 0;        //counter
     char *line = malloc(BUFFER_LENGTH * sizeof(char)), //for holding line
         *lineForWrite = malloc(BUFFER_LENGTH * sizeof(char)), //for holding line passed to write parser
@@ -571,7 +506,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     openFileList[currentDir].numOfChildren = 0;
     openFileList[currentDir].flags = 1;
 
-    openFileList[0].fileBuffer = "bierman is God";
+    openFileList[0].fileBuffer = "Bierman is God";
     openFileList[0].dateModified = 0;
     openFileList[0].flags = 1;
     openFileList[0].size = 0;
@@ -579,7 +514,7 @@ void initRootDir(uint64_t startLoc, uint64_t blockSize) {
     openFileList[0].bytesFromStart = 0;
 
     //write buffer to disk
-    LBAwrite(openFileList[0].fileBuffer, 1, startLoc);
+    //LBAwrite("Bierman is God", 1, startLoc);
     currVCBPtr->freeBlockLoc = 1;
 }
 

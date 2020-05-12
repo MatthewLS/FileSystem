@@ -18,6 +18,6 @@ run: $(OBJ)
 exec:
 	./cabinet newfs
 clean:
-	rm -rf cabinet fsdriver3.o
+	rm -rf newfs fsdriver3.o
 
 PHONY: all run
